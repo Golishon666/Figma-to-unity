@@ -459,6 +459,7 @@ async function rasterize(job, index) {
     rect.y = box.y || 0;
     rect.resize(Math.max(1, box.width || 1), Math.max(1, box.height || 1));
     rect.visible = true;
+    rect.opacity = typeof node.opacity === "number" ? node.opacity : 1;
     rect.fills = clonePaints(node.fills);
     rect.strokes = clonePaints(node.strokes);
     rect.strokeWeight = typeof node.strokeWeight === "number" ? node.strokeWeight : 0;

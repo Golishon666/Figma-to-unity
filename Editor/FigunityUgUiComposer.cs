@@ -481,7 +481,7 @@ namespace Figunity.Editor
 
             var rawImage = rect.gameObject.AddComponent<RawImage>();
             rawImage.texture = texture;
-            rawImage.color = new Color(1f, 1f, 1f, FigunityPaintRules.NodeAlpha(node));
+            rawImage.color = Color.white;
             rawImage.raycastTarget = false;
             return rawImage;
         }

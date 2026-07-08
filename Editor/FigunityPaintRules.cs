@@ -82,7 +82,7 @@ namespace Figunity.Editor
 
         public static float NodeAlpha(FigunityNode node)
         {
-            return node == null || node.opacity <= 0f ? 1f : Mathf.Clamp01(node.opacity);
+            return node == null ? 1f : Mathf.Clamp01(node.opacity);
         }
 
         public static Color ConvertColor(FigunityPaint paint, float nodeAlpha)
@@ -92,7 +92,7 @@ namespace Figunity.Editor
                 return Color.white;
             }
 
-            var paintAlpha = paint.opacity <= 0f ? 1f : Mathf.Clamp01(paint.opacity);
+            var paintAlpha = Mathf.Clamp01(paint.opacity);
             return new Color(
                 Mathf.Clamp01(paint.color.r),
                 Mathf.Clamp01(paint.color.g),
