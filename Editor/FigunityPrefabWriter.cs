@@ -45,6 +45,7 @@ namespace Figunity.Editor
         {
             if (settings == null) throw new ArgumentNullException(nameof(settings));
             var document = ReadPayload(settings);
+            FigunityTextureImporter.ConfigureElementTextures(settings.importFolder);
             FigunitySettings.EnsureUnityFolder(settings.prefabFolder);
             if (settings.createRepeatedItemPrefabs)
             {

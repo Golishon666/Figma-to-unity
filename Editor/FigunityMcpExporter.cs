@@ -94,7 +94,8 @@ namespace Figunity.Editor
                 UnityEngine.Debug.Log("FIGUNITY export completed:\n" + stdout);
             }
 
-            AssetDatabase.Refresh();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            FigunityTextureImporter.ConfigureElementTextures(settings.importFolder);
         }
 
         private static string ResolvePackageRoot()

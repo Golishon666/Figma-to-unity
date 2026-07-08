@@ -98,6 +98,11 @@ namespace Figunity.Editor
                 report.graphics++;
             }
 
+            if (IsCompositeRasterNode(node))
+            {
+                return;
+            }
+
             if (node.clipsContent)
             {
                 rect.gameObject.AddComponent<RectMask2D>();
@@ -365,7 +370,8 @@ namespace Figunity.Editor
             }
 
             var exportedVisual = string.Equals(node.renderMode, "visual", StringComparison.OrdinalIgnoreCase) ||
-                                 string.Equals(node.renderMode, "background", StringComparison.OrdinalIgnoreCase);
+                                 string.Equals(node.renderMode, "background", StringComparison.OrdinalIgnoreCase) ||
+                                 IsCompositeRasterNode(node);
             var flat = FigunityPaintRules.IsFlatFill(node);
             if (!exportedVisual && !flat)
             {
@@ -441,11 +447,21 @@ namespace Figunity.Editor
                 return null;
             }
 
+            if (texture.width <= 1 && texture.height <= 1 && (node.bounds.width > 2f || node.bounds.height > 2f))
+            {
+                return null;
+            }
+
             var rawImage = rect.gameObject.AddComponent<RawImage>();
             rawImage.texture = texture;
             rawImage.color = new Color(1f, 1f, 1f, FigunityPaintRules.NodeAlpha(node));
             rawImage.raycastTarget = false;
             return rawImage;
+        }
+
+        private static bool IsCompositeRasterNode(FigunityNode node)
+        {
+            return node != null && string.Equals(node.renderMode, "composite", StringComparison.OrdinalIgnoreCase);
         }
 
         private static Graphic AttachMaskStencilGraphic(FigunityNode node, RectTransform rect, FigunityFrameOptions options)
@@ -843,7 +859,7 @@ namespace Figunity.Editor
         {
             var input = rect.gameObject.GetComponent<TMP_InputField>() ?? rect.gameObject.AddComponent<TMP_InputField>();
             input.targetGraphic = EnsureRaycastGraphic(rect, graphic);
-            input.transition = Selectable.Transition.ColorTint;
+            input.transition = Selectable.Transition.None;
 
             var paddingX = Mathf.Min(14f, Mathf.Max(6f, rect.sizeDelta.x * 0.05f));
             var paddingY = Mathf.Min(10f, Mathf.Max(4f, rect.sizeDelta.y * 0.18f));

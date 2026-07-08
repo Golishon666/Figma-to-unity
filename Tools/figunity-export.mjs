@@ -282,6 +282,10 @@ function visibleChildren(node) {
   return "children" in node ? node.children.filter((child) => child.visible !== false && child.absoluteBoundingBox) : [];
 }
 
+function ownsFigmaMask(children) {
+  return children.some((child) => child.isMask);
+}
+
 function textShouldRasterize(node) {
   if (node.type !== "TEXT") return false;
   const value = (node.characters || "").trim();
@@ -378,6 +382,7 @@ function renderIntent(node, children) {
   const bounds = localBounds(node);
   if (bounds.width <= 0 || bounds.height <= 0) return "skip";
   if (node.type === "TEXT") return textShouldRasterize(node) ? "visual" : "text";
+  if (children.length > 0 && ownsFigmaMask(children)) return "composite";
   if (children.length === 0) return hasRenderablePaint(node) ? "visual" : "container";
   return hasRenderablePaint(node) ? "background" : "container";
 }
@@ -387,7 +392,7 @@ function traverse(node, parentId, depth, siblingIndex, path) {
   const children = visibleChildren(node);
   const mode = renderIntent(node, children);
   if (mode === "text") textCount++;
-  if (mode === "visual" || mode === "background") visualCount++;
+  if (mode === "visual" || mode === "background" || mode === "composite") visualCount++;
 
   const data = {
     id: node.id,
@@ -417,7 +422,7 @@ function traverse(node, parentId, depth, siblingIndex, path) {
     children: []
   };
 
-  if (mode === "visual" || mode === "background") {
+  if (mode === "visual" || mode === "background" || mode === "composite") {
     rasterJobs.push({ id: node.id, name: node.name || node.type, mode, bounds: data.bounds, path, type: node.type });
   }
 
@@ -434,19 +439,53 @@ async function rasterize(job, index) {
   let target = node;
   let cleanup = null;
   if (job.mode === "background" && "children" in node) {
-    const clone = node.clone();
-    node.parent.appendChild(clone);
-    clone.x = node.x;
-    clone.y = node.y;
-    clone.visible = true;
-    while (clone.children.length > 0) clone.children[0].remove();
-    target = clone;
-    cleanup = clone;
+    const rect = figma.createRectangle();
+    const host = root.parent && root.parent.type === "PAGE" ? root.parent : figma.currentPage;
+    const box = node.absoluteBoundingBox || job.bounds || { x: node.x || 0, y: node.y || 0, width: node.width || 1, height: node.height || 1 };
+    host.appendChild(rect);
+    rect.name = (node.name || "Background") + " Background Export";
+    rect.x = box.x || 0;
+    rect.y = box.y || 0;
+    rect.resize(Math.max(1, box.width || 1), Math.max(1, box.height || 1));
+    rect.visible = true;
+    rect.fills = clonePaints(node.fills);
+    rect.strokes = clonePaints(node.strokes);
+    rect.strokeWeight = typeof node.strokeWeight === "number" ? node.strokeWeight : 0;
+    rect.effects = cloneSerializable(node.effects || []);
+    copyCornerRadii(node, rect);
+    target = rect;
+    cleanup = rect;
   }
 
-  const bytes = await target.exportAsync({ format: "PNG", constraint: { type: "SCALE", value: rasterScale } });
-  if (cleanup) cleanup.remove();
+  let bytes;
+  try {
+    bytes = await target.exportAsync({ format: "PNG", constraint: { type: "SCALE", value: rasterScale } });
+  } finally {
+    if (cleanup) cleanup.remove();
+  }
+
   return { ...job, index, scale: rasterScale, byteLength: bytes.length, base64: figma.base64Encode(bytes) };
+}
+
+function cloneSerializable(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function clonePaints(value) {
+  return Array.isArray(value) ? cloneSerializable(value) : [];
+}
+
+function copyCornerRadii(source, target) {
+  if (typeof source.cornerRadius === "number" && source.cornerRadius !== figma.mixed) {
+    target.cornerRadius = source.cornerRadius;
+  }
+
+  const corners = ["topLeftRadius", "topRightRadius", "bottomRightRadius", "bottomLeftRadius"];
+  for (const key of corners) {
+    if (typeof source[key] === "number" && source[key] !== figma.mixed) {
+      target[key] = source[key];
+    }
+  }
 }
 
 const tree = traverse(root, null, 0, 0, root.name || root.type);
@@ -485,6 +524,30 @@ function assignAssetPaths(node, exportMap) {
   if (!node) return;
   if (exportMap.has(node.id)) node.assetPath = exportMap.get(node.id);
   for (const child of node.children || []) assignAssetPaths(child, exportMap);
+}
+
+function pngDimensions(bytes) {
+  if (bytes.length < 24 ||
+      bytes[0] !== 0x89 ||
+      bytes[1] !== 0x50 ||
+      bytes[2] !== 0x4e ||
+      bytes[3] !== 0x47) {
+    return { width: 0, height: 0 };
+  }
+
+  return {
+    width: bytes.readUInt32BE(16),
+    height: bytes.readUInt32BE(20),
+  };
+}
+
+function isInvalidTinyRaster(item, bytes) {
+  const dimensions = pngDimensions(bytes);
+  item.pixelWidth = dimensions.width;
+  item.pixelHeight = dimensions.height;
+  return dimensions.width <= 1 &&
+    dimensions.height <= 1 &&
+    ((item.bounds?.width || 0) > 2 || (item.bounds?.height || 0) > 2);
 }
 
 try {
@@ -530,10 +593,18 @@ try {
     const exportMap = new Map();
     let saved = 0;
     let reused = 0;
+    let skipped = 0;
 
     for (const item of payload.exports || []) {
       if (!item.base64 || item.error) continue;
       const bytes = Buffer.from(item.base64, "base64");
+      if (isInvalidTinyRaster(item, bytes)) {
+        item.error = `discarded invalid ${item.pixelWidth}x${item.pixelHeight} raster`;
+        skipped++;
+        delete item.base64;
+        continue;
+      }
+
       const hash = createHash("sha256").update(bytes).digest("hex");
       const existingUnityPath = assetPathByHash.get(hash);
       if (existingUnityPath) {
@@ -577,6 +648,7 @@ try {
       visualCount: payload.visualCount,
       exportedPngs: saved,
       dedupedPngs: reused,
+      skippedPngs: skipped,
       screenshotPath: payload.screenshotPath,
     });
   }
