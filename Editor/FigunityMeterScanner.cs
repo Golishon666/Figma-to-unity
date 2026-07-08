@@ -47,7 +47,7 @@ namespace Figunity.Editor
                 }
             }
 
-            if (!likelyMeter && track == null && fill == null)
+            if (!likelyMeter && !LooksLikeStandaloneMeter(node))
             {
                 return false;
             }
@@ -68,6 +68,40 @@ namespace Figunity.Editor
             };
 
             return true;
+        }
+
+        private static bool LooksLikeStandaloneMeter(FigunityNode node)
+        {
+            if (node == null || node.children == null || node.children.Count == 0 || node.children.Count > 5)
+            {
+                return false;
+            }
+
+            var hasTrack = false;
+            var hasFill = false;
+            for (var i = 0; i < node.children.Count; i++)
+            {
+                var child = node.children[i];
+                if (child == null)
+                {
+                    return false;
+                }
+
+                var name = FigunityNameRules.Compact(child.name);
+                var isTrack = name.Contains("track");
+                var isFill = name.Contains("fill");
+                var isHandle = name.Contains("handle");
+                var isLabel = name.Contains("label") || name.Contains("value");
+                if (!isTrack && !isFill && !isHandle && !isLabel)
+                {
+                    return false;
+                }
+
+                hasTrack |= isTrack;
+                hasFill |= isFill;
+            }
+
+            return hasTrack && hasFill;
         }
     }
 
