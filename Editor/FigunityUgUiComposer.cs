@@ -979,6 +979,8 @@ namespace Figunity.Editor
             metadata.ComponentKey = frameNode.componentKey;
             metadata.RepeatKey = frameNode.repeatKey;
             metadata.ControlHint = frameNode.controlHint;
+            metadata.OverrideHint = frameNode.overrideHint;
+            metadata.DecisionReason = frameNode.decisionReason;
             metadata.IsMask = frameNode.isMask;
             metadata.IsRepeated = !string.IsNullOrWhiteSpace(frameNode.repeatKey);
         }

@@ -49,6 +49,20 @@ Each frame includes:
 - reference screenshot: `screenshotPath`
 
 Each node includes bounds, fills, strokes, text data, render mode, children, and an optional Unity asset path for rasterized visuals.
+Nodes can also include `controlHint`, `overrideHint`, and `decisionReason`. `overrideHint` is populated from `figunity:*` tags in the Figma node name or description, while `decisionReason` records why the exporter chose a render mode or control hint.
+
+## Manual Overrides
+
+Use `figunity:*` tags when automatic detection is too broad or too conservative:
+
+- `figunity:raw`, `figunity:raster`, or `figunity:image` exports the whole node as one PNG and imports it as `RawImage`.
+- `figunity:container`, `figunity:background`, `figunity:visual`, and `figunity:text` force the render role.
+- `figunity:button`, `figunity:toggle`, `figunity:input`, `figunity:dropdown`, `figunity:scroll`, `figunity:tab`, `figunity:slider`, and `figunity:passive-slider` force the closest Unity UI control.
+- `figunity:mask` and `figunity:no-mask` override mask handling.
+- `figunity:no-control`, `figunity:no-slider`, and `figunity:no-meter` disable mistaken control or meter detection.
+- `figunity:ignore` or `figunity:skip` skips a node.
+
+Keep tags on the smallest node that needs the correction. The Unity object name strips the tag, but the generated `FigunityImportedNode` metadata keeps it for debugging.
 
 ## Unity Conversion
 

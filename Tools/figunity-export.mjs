@@ -299,7 +299,32 @@ function compactName(value) {
   return String(value || "").replace(/[^a-z0-9]+/gi, "").toLowerCase();
 }
 
-function inferControlHint(node) {
+function overrideTokens(node) {
+  const source = String((node && node.name) || "") + " " + String((node && node.description) || "");
+  const tokens = new Set();
+  const pattern = /figunity:([a-z0-9_-]+)/gi;
+  let match;
+  while ((match = pattern.exec(source)) !== null) {
+    tokens.add(match[1].toLowerCase().replace(/_/g, "-"));
+  }
+
+  return Array.from(tokens);
+}
+
+function hasOverride(overrides, ...names) {
+  return names.some((name) => overrides.includes(name));
+}
+
+function inferControlHint(node, overrides) {
+  if (hasOverride(overrides, "no-control", "none")) return "";
+  if (hasOverride(overrides, "button")) return "button";
+  if (hasOverride(overrides, "toggle")) return "toggle";
+  if (hasOverride(overrides, "input", "textfield", "text-input")) return "input";
+  if (hasOverride(overrides, "dropdown", "select")) return "dropdown";
+  if (hasOverride(overrides, "scroll", "scrollview", "scroll-rect")) return "scroll";
+  if (hasOverride(overrides, "tab")) return "tab";
+  if (hasOverride(overrides, "slider")) return "slider";
+  if (hasOverride(overrides, "passive-slider", "progress", "meter")) return "passive-slider";
   if (node.type === "TEXT") return "";
 
   const name = compactName(node.name);
@@ -389,19 +414,41 @@ function textPayload(node) {
   };
 }
 
-function renderIntent(node, children) {
+function renderDecision(node, children, overrides) {
   const bounds = localBounds(node);
-  if (bounds.width <= 0 || bounds.height <= 0) return "skip";
-  if (node.type === "TEXT") return textShouldRasterize(node) ? "visual" : "text";
-  if (children.length > 0 && ownsFigmaMask(children)) return "composite";
-  if (children.length === 0) return hasRenderablePaint(node) ? "visual" : "container";
-  return hasRenderablePaint(node) ? "background" : "container";
+  if (bounds.width <= 0 || bounds.height <= 0) return { mode: "skip", reason: "zero-size bounds" };
+  if (hasOverride(overrides, "ignore", "skip")) return { mode: "skip", reason: "figunity override: skip" };
+  if (hasOverride(overrides, "raw", "raster", "image")) return { mode: "composite", reason: "figunity override: raw PNG" };
+  if (hasOverride(overrides, "container")) return { mode: "container", reason: "figunity override: container" };
+  if (hasOverride(overrides, "background")) return { mode: "background", reason: "figunity override: background" };
+  if (hasOverride(overrides, "visual")) return { mode: "visual", reason: "figunity override: visual" };
+  if (hasOverride(overrides, "text") && node.type === "TEXT") return { mode: "text", reason: "figunity override: text" };
+  if (node.type === "TEXT") {
+    return textShouldRasterize(node)
+      ? { mode: "visual", reason: "short/icon text rasterized" }
+      : { mode: "text", reason: "Figma TEXT node" };
+  }
+
+  if (children.length > 0 && ownsFigmaMask(children)) return { mode: "composite", reason: "Figma mask group" };
+  if (children.length === 0) {
+    return hasRenderablePaint(node)
+      ? { mode: "visual", reason: "leaf visual paint" }
+      : { mode: "container", reason: "leaf container" };
+  }
+
+  return hasRenderablePaint(node)
+    ? { mode: "background", reason: "painted container background" }
+    : { mode: "container", reason: "container" };
 }
 
 async function traverse(node, parentId, depth, siblingIndex, path) {
   nodeCount++;
   const children = visibleChildren(node);
-  const mode = renderIntent(node, children);
+  const overrides = overrideTokens(node);
+  const decision = renderDecision(node, children, overrides);
+  const mode = decision.mode;
+  const controlHint = inferControlHint(node, overrides);
+  const maskDisabled = hasOverride(overrides, "no-mask");
   if (mode === "text") textCount++;
   if (mode === "visual" || mode === "background" || mode === "composite") visualCount++;
 
@@ -414,9 +461,11 @@ async function traverse(node, parentId, depth, siblingIndex, path) {
     siblingIndex,
     path,
     renderMode: mode,
-    controlHint: inferControlHint(node),
-    clipsContent: !!node.clipsContent,
-    isMask: !!node.isMask,
+    controlHint,
+    overrideHint: overrides.join(","),
+    decisionReason: decision.reason + (controlHint ? "; control=" + controlHint : ""),
+    clipsContent: !!node.clipsContent && !maskDisabled,
+    isMask: (!!node.isMask || hasOverride(overrides, "mask")) && !maskDisabled,
     maskType: node.maskType || "",
     opacity: node.opacity == null ? 1 : node.opacity,
     blendMode: node.blendMode || "PASS_THROUGH",

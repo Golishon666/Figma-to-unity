@@ -13,6 +13,11 @@ namespace Figunity.Editor
                 return false;
             }
 
+            if (HasOverride(node, "no-slider", "no-meter"))
+            {
+                return false;
+            }
+
             var compactName = FigunityNameRules.Compact(node.name);
             var likelyMeter = compactName.Contains("slider") ||
                               compactName.Contains("progress") ||
@@ -102,6 +107,25 @@ namespace Figunity.Editor
             }
 
             return hasTrack && hasFill;
+        }
+
+        private static bool HasOverride(FigunityNode node, params string[] tokens)
+        {
+            if (node == null || string.IsNullOrWhiteSpace(node.overrideHint))
+            {
+                return false;
+            }
+
+            var value = "," + node.overrideHint.ToLowerInvariant().Replace("_", "-") + ",";
+            for (var i = 0; i < tokens.Length; i++)
+            {
+                if (value.Contains("," + tokens[i] + ","))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 

@@ -87,6 +87,22 @@ The panel writes a temporary frame config under the configured import folder, ex
 
 The `Settings` tab edits the same `Assets/FIGUNITY/FigunitySettings.asset` used by the Unity project settings provider: port, expected Figma file name, raster scale, import/prefab paths, masks, auto-layout, repeated prefab extraction, diagnostics, manual-child preservation, and TMP font mappings.
 
+## Manual Overrides
+
+FIGUNITY reads optional `figunity:*` tags from a Figma node name or description. Use them when automatic detection is too ambiguous:
+
+- Rendering: `figunity:raw`, `figunity:raster`, `figunity:image`, `figunity:container`, `figunity:background`, `figunity:visual`, `figunity:text`, `figunity:ignore`.
+- Controls: `figunity:button`, `figunity:toggle`, `figunity:input`, `figunity:dropdown`, `figunity:scroll`, `figunity:tab`, `figunity:slider`, `figunity:passive-slider`.
+- Masks and suppressors: `figunity:mask`, `figunity:no-mask`, `figunity:no-control`, `figunity:no-slider`, `figunity:no-meter`.
+
+Examples:
+
+- Name a complex decorative group `Portrait figunity:raw` to import it as one `RawImage`.
+- Name button-looking art `Badge figunity:no-control` to prevent a `Button` component.
+- Name a clipped frame `Inventory List figunity:scroll` when the frame name does not contain scroll-related words.
+
+Generated metadata stores both the override tags and the importer decision reason. The diagnostics file also lists recognition highlights for quick review.
+
 ## Frame Config
 
 Create `Assets/FIGUNITY/figunity.frames.json`:

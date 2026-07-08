@@ -257,6 +257,33 @@ function dropdown(parent, name, x, y, w) {
   return group;
 }
 
+function manualOverrideDemo(parent, x, y) {
+  const raw = figma.createFrame();
+  raw.name = "Panel - Forced Raw figunity:raw";
+  raw.x = x;
+  raw.y = y;
+  raw.resize(320, 116);
+  raw.fills = [solid("#202832")];
+  raw.cornerRadius = 18;
+  parent.appendChild(raw);
+
+  rect(raw, "Visual - Accent", 20, 20, 78, 76, "#8D5BE0", 18);
+  rect(raw, "Visual - Overlay", 48, 36, 98, 48, "#E05B7A", 10);
+  text(raw, "Label", "Raw composite", 166, 28, 130, 24, 18, "#F4F1E8", true);
+  text(raw, "Caption", "Imported as one image", 166, 58, 130, 22, 14, "#A7B1BF");
+
+  const passive = figma.createFrame();
+  passive.name = "Button - Decorative Badge figunity:no-control";
+  passive.x = x;
+  passive.y = y + 136;
+  passive.resize(320, 52);
+  passive.fills = [solid("#263241")];
+  passive.cornerRadius = 10;
+  parent.appendChild(passive);
+  text(passive, "Label", "Button-looking art, no Button", 18, 14, 260, 22, 16, "#F4F1E8", true);
+  return raw;
+}
+
 function card(parent, index, x, y) {
   const group = figma.createFrame();
   group.name = "Card - Mission " + String(index).padStart(2, "0");
@@ -290,6 +317,7 @@ button(main, "Options", "OPTIONS", 230, 224, 180, 54, "#E0B15B");
 toggle(main, "Music", 32, 308, true);
 input(main, "Player Name", 32, 362, 360);
 dropdown(main, "Difficulty", 32, 424, 280);
+manualOverrideDemo(main, 520, 224);
 
 const masks = frame("FIGUNITY Test Mask Menu", 1000, 0, 960, 540);
 text(masks, "Title", "MASKS AND CLIPPING", 32, 28, 500, 38, 28, "#F4F1E8", true);

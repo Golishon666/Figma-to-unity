@@ -78,6 +78,8 @@ namespace Figunity.Editor
         public string path;
         public string renderMode;
         public string controlHint;
+        public string overrideHint;
+        public string decisionReason;
         public bool clipsContent;
         public bool isMask;
         public string maskType;

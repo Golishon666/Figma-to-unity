@@ -55,6 +55,7 @@ namespace Figunity.Editor
                 report.AppendLine("- Dropdowns: " + counters.dropdowns);
                 report.AppendLine("- Scroll views: " + counters.scrollViews);
                 report.AppendLine("- Repeated groups: " + counters.repeatedGroups);
+                report.AppendLine("- Manual overrides: " + counters.manualOverrides);
                 if (!string.IsNullOrWhiteSpace(frame.screenshotPath))
                 {
                     report.AppendLine("- Figma screenshot: `" + frame.screenshotPath + "`");
@@ -67,6 +68,18 @@ namespace Figunity.Editor
                     report.AppendLine("- Built graphics: " + build.graphics);
                     report.AppendLine("- Built sliders: " + build.sliders);
                     report.AppendLine("- Built layout groups: " + build.layoutGroups);
+                }
+
+                var highlights = new List<string>();
+                CollectRecognitionHighlights(frame.tree, highlights, 16);
+                if (highlights.Count > 0)
+                {
+                    report.AppendLine();
+                    report.AppendLine("### Recognition Highlights");
+                    for (var h = 0; h < highlights.Count; h++)
+                    {
+                        report.AppendLine("- " + highlights[h]);
+                    }
                 }
 
                 report.AppendLine();
@@ -82,6 +95,7 @@ namespace Figunity.Editor
             report.AppendLine("- Dropdowns: " + totals.dropdowns);
             report.AppendLine("- Scroll views: " + totals.scrollViews);
             report.AppendLine("- Repeated groups: " + totals.repeatedGroups);
+            report.AppendLine("- Manual overrides: " + totals.manualOverrides);
             report.AppendLine();
             report.AppendLine("## Visual Diff");
             report.AppendLine();
@@ -109,6 +123,7 @@ namespace Figunity.Editor
 
             if (node.isMask || node.clipsContent) counters.masks++;
             if (node.autoLayout != null && node.autoLayout.Enabled) counters.layoutGroups++;
+            if (!string.IsNullOrWhiteSpace(node.overrideHint)) counters.manualOverrides++;
             switch (FigunityControlRules.Resolve(node))
             {
                 case FigunityControlKind.Button:
@@ -153,6 +168,42 @@ namespace Figunity.Editor
             }
         }
 
+        private static void CollectRecognitionHighlights(FigunityNode node, List<string> rows, int limit)
+        {
+            if (node == null || rows == null || rows.Count >= limit)
+            {
+                return;
+            }
+
+            var hasOverride = !string.IsNullOrWhiteSpace(node.overrideHint);
+            var hasControl = !string.IsNullOrWhiteSpace(node.controlHint);
+            var isSpecialRender =
+                string.Equals(node.renderMode, "composite", System.StringComparison.OrdinalIgnoreCase);
+            if (hasOverride || hasControl || isSpecialRender || node.isMask)
+            {
+                var pieces = new List<string>();
+                if (hasOverride) pieces.Add("override=" + node.overrideHint);
+                if (hasControl) pieces.Add("control=" + node.controlHint);
+                if (!string.IsNullOrWhiteSpace(node.renderMode)) pieces.Add("render=" + node.renderMode);
+                if (!string.IsNullOrWhiteSpace(node.decisionReason)) pieces.Add("reason=" + node.decisionReason);
+                if (node.isMask) pieces.Add("mask=true");
+                if (node.clipsContent) pieces.Add("clips=true");
+
+                var label = string.IsNullOrWhiteSpace(node.path) ? node.name : node.path;
+                rows.Add("`" + label + "` - " + string.Join(", ", pieces));
+            }
+
+            if (node.children == null)
+            {
+                return;
+            }
+
+            for (var i = 0; i < node.children.Count && rows.Count < limit; i++)
+            {
+                CollectRecognitionHighlights(node.children[i], rows, limit);
+            }
+        }
+
         private sealed class Counters
         {
             public int masks;
@@ -163,6 +214,7 @@ namespace Figunity.Editor
             public int dropdowns;
             public int scrollViews;
             public int repeatedGroups;
+            public int manualOverrides;
 
             public void Add(Counters other)
             {
@@ -174,6 +226,7 @@ namespace Figunity.Editor
                 dropdowns += other.dropdowns;
                 scrollViews += other.scrollViews;
                 repeatedGroups += other.repeatedGroups;
+                manualOverrides += other.manualOverrides;
             }
         }
     }

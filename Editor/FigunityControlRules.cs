@@ -19,6 +19,12 @@ namespace Figunity.Editor
     {
         public static FigunityControlKind Resolve(FigunityNode node)
         {
+            var overrideHint = FigunityNameRules.Compact(node != null ? node.overrideHint : string.Empty);
+            if (overrideHint.Contains("nocontrol") || overrideHint.Contains("none"))
+            {
+                return FigunityControlKind.None;
+            }
+
             if (node != null && node.CarriesText)
             {
                 return FigunityControlKind.None;
@@ -26,6 +32,11 @@ namespace Figunity.Editor
 
             var hint = FigunityNameRules.Compact(node != null ? node.controlHint : string.Empty);
             var name = FigunityNameRules.Compact(node != null ? node.name : string.Empty);
+            if (string.IsNullOrEmpty(hint))
+            {
+                hint = overrideHint;
+            }
+
             if (!string.IsNullOrEmpty(hint))
             {
                 if (hint.Contains("passiveslider")) return FigunityControlKind.PassiveSlider;

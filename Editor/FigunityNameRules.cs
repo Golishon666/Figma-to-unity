@@ -9,12 +9,14 @@ namespace Figunity.Editor
     public static class FigunityNameRules
     {
         private static readonly Regex AnnotationPattern = new Regex(@"\[(background|visual|container|text)\]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex OverridePattern = new Regex(@"\bfigunity:[A-Za-z0-9_-]+\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Regex NonWordPattern = new Regex(@"[^A-Za-z0-9]+", RegexOptions.Compiled);
 
         public static string ToObjectName(string figmaName)
         {
             var value = string.IsNullOrWhiteSpace(figmaName) ? "Node" : figmaName.Trim();
             value = AnnotationPattern.Replace(value, string.Empty);
+            value = OverridePattern.Replace(value, string.Empty);
             value = value.Replace(" / ", " ");
             value = value.Replace("/", " ");
             value = value.Replace("\\", " ");

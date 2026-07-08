@@ -13,6 +13,8 @@ namespace Figunity.Runtime
         [SerializeField] private string componentKey;
         [SerializeField] private string repeatKey;
         [SerializeField] private string controlHint;
+        [SerializeField] private string overrideHint;
+        [SerializeField] private string decisionReason;
         [SerializeField] private bool mask;
         [SerializeField] private bool repeated;
 
@@ -62,6 +64,18 @@ namespace Figunity.Runtime
         {
             get => controlHint;
             set => controlHint = value;
+        }
+
+        public string OverrideHint
+        {
+            get => overrideHint;
+            set => overrideHint = value;
+        }
+
+        public string DecisionReason
+        {
+            get => decisionReason;
+            set => decisionReason = value;
         }
 
         public bool IsMask

@@ -50,6 +50,8 @@ FIGUNITY package paths:
 
 FIGUNITY handles the core conversion rules: `TEXT` to `TextMeshProUGUI`, simple solid panels to `Image` or `FigunityRoundedRectGraphic`, complex/vector/image/background nodes to exported PNG `RawImage`, `Button - ...` frames to `Button`, Figma meter groups with `Track`/`Fill`/`Handle` to passive or active `UnityEngine.UI.Slider`, `clipsContent` and mask nodes to Unity masks, Figma auto-layout hints to layout groups, and common toggle/input/dropdown/scroll/tab controls to UGUI/TMP components.
 
+Use `figunity:*` tags in a Figma node name or description when automatic detection is ambiguous. Supported overrides include `figunity:raw`, `figunity:raster`, `figunity:image`, `figunity:container`, `figunity:background`, `figunity:visual`, `figunity:text`, `figunity:ignore`, `figunity:button`, `figunity:toggle`, `figunity:input`, `figunity:dropdown`, `figunity:scroll`, `figunity:tab`, `figunity:slider`, `figunity:passive-slider`, `figunity:mask`, `figunity:no-mask`, `figunity:no-control`, `figunity:no-slider`, and `figunity:no-meter`. The importer strips these tags from Unity object names, preserves them in `FigunityImportedNode`, and writes decision reasons into diagnostics.
+
 Use `Tools/FIGUNITY/Importer Panel` when the user needs a visual import workflow. The panel reads exportable Figma panels through `figma-console-mcp`, highlights selected rows, supports `Import Selected` and `Import All`, writes a temporary frame config under the import folder, then runs the same export and prefab rebuild pipeline. Its `Settings` tab edits the same `FigunitySettings.asset` values as `Project Settings > FIGUNITY`.
 
 When extending a project-specific Figma import:
