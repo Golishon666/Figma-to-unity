@@ -220,24 +220,7 @@ namespace Figunity.Editor
             var rect = MakeRect(FigunityNameRules.ToObjectName(maskNode.name), parent, maskNode.bounds, parentBounds);
             AttachMetadata(maskNode, rect);
             AttachLayoutElement(maskNode, rect);
-            var graphic = AttachVisual(maskNode, rect, options);
-            if (graphic == null)
-            {
-                if (options.createRoundedRectGraphics && ShouldUseEllipseGraphic(maskNode))
-                {
-                    var ellipse = rect.gameObject.AddComponent<FigunityEllipseGraphic>();
-                    ellipse.color = Color.white;
-                    ellipse.raycastTarget = false;
-                    graphic = ellipse;
-                }
-                else
-                {
-                    var image = rect.gameObject.AddComponent<Image>();
-                    image.color = Color.white;
-                    image.raycastTarget = false;
-                    graphic = image;
-                }
-            }
+            var graphic = AttachMaskStencilGraphic(maskNode, rect, options);
 
             var mask = rect.gameObject.AddComponent<Mask>();
             mask.showMaskGraphic = false;
@@ -463,6 +446,31 @@ namespace Figunity.Editor
             rawImage.color = new Color(1f, 1f, 1f, FigunityPaintRules.NodeAlpha(node));
             rawImage.raycastTarget = false;
             return rawImage;
+        }
+
+        private static Graphic AttachMaskStencilGraphic(FigunityNode node, RectTransform rect, FigunityFrameOptions options)
+        {
+            if (node != null && options.createRoundedRectGraphics && ShouldUseEllipseGraphic(node))
+            {
+                var ellipse = rect.gameObject.AddComponent<FigunityEllipseGraphic>();
+                ellipse.color = Color.white;
+                ellipse.raycastTarget = false;
+                return ellipse;
+            }
+
+            if (node != null && options.createRoundedRectGraphics && node.cornerRadius > 0.5f)
+            {
+                var rounded = rect.gameObject.AddComponent<FigunityRoundedRectGraphic>();
+                rounded.color = Color.white;
+                rounded.CornerRadius = node.cornerRadius;
+                rounded.raycastTarget = false;
+                return rounded;
+            }
+
+            var image = rect.gameObject.AddComponent<Image>();
+            image.color = Color.white;
+            image.raycastTarget = false;
+            return image;
         }
 
         private static bool ShouldUseEllipseGraphic(FigunityNode node)
