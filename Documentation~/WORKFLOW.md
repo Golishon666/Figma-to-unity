@@ -15,6 +15,14 @@
 7. Unity refreshes assets and rebuilds preview prefabs into `Assets/FIGUNITY/Prefabs`.
 8. Unity writes diagnostics, repeated-item prefab candidates, and an optional test scene.
 
+## Partial Element Updates
+
+Imported objects carry `FigunityImportedNode` metadata. Select any imported panel or child element and press `Update` in the Inspector to refresh only that subtree from the latest `payload.json`.
+
+The operation keeps the selected GameObject in place, matches existing imported children by Figma id, updates generated components and `RectTransform` values, creates newly added imported children, removes imported children that no longer exist in the source node, and leaves manual non-FIGUNITY children alone where possible.
+
+The menu item `Tools/FIGUNITY/Update Selected Element From Payload` runs the same code path for the active selection.
+
 ## External MCP Dependency
 
 FIGUNITY depends on the external MCP server:

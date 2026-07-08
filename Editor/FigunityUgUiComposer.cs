@@ -49,6 +49,25 @@ namespace Figunity.Editor
             return AddSlider(root, width, height, trackColor, fillColor, Mathf.Clamp01(value), null, default);
         }
 
+        public FigunityBuildResult ComposeSubtree(FigunityNode node, Transform parent, FigunityBounds parentBounds, FigunityFrameOptions options)
+        {
+            if (node == null) throw new ArgumentNullException(nameof(node));
+            if (parent == null) throw new ArgumentNullException(nameof(parent));
+            var rectParent = parent as RectTransform;
+            if (rectParent == null)
+            {
+                throw new ArgumentException("FIGUNITY subtree parent must be a RectTransform.", nameof(parent));
+            }
+
+            var report = new FigunityBuildReport();
+            var before = parent.childCount;
+            ComposeNode(node, rectParent, parentBounds, options, report);
+            var root = parent.childCount > before
+                ? parent.GetChild(before).GetComponent<RectTransform>()
+                : null;
+            return new FigunityBuildResult(root, report);
+        }
+
         public static void Clear(Transform parent)
         {
             for (var i = parent.childCount - 1; i >= 0; i--)

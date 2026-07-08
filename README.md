@@ -57,6 +57,7 @@ Use the Unity menu:
 - `Tools/FIGUNITY/Importer Panel`
 - `Tools/FIGUNITY/Export From Figma via figma-console-mcp`
 - `Tools/FIGUNITY/Rebuild Prefabs From Payload`
+- `Tools/FIGUNITY/Update Selected Element From Payload`
 - `Tools/FIGUNITY/Export And Rebuild`
 - `Tools/FIGUNITY/Tests/Create Test Menus In Figma`
 - `Tools/FIGUNITY/Tests/Create Export Rebuild And Build Test Scene`
@@ -86,6 +87,18 @@ Open `Tools/FIGUNITY/Importer Panel` for a visual workflow:
 The panel writes a temporary frame config under the configured import folder, exports through `figma-console-mcp`, then rebuilds prefabs with the same importer settings as the menu workflow.
 
 The `Settings` tab edits the same `Assets/FIGUNITY/FigunitySettings.asset` used by the Unity project settings provider: port, expected Figma file name, raster scale, import/prefab paths, masks, auto-layout, responsive anchors, repeated prefab extraction, diagnostics, manual-child preservation, rounded/stroked primitive graphics, and TMP font mappings.
+
+## Update Existing Elements
+
+Every imported object with `FigunityImportedNode` metadata shows an `Update` button in the Unity Inspector. The button reads the latest `payload.json`, finds the matching Figma node by stable id or source path, and applies only that subtree in place.
+
+Use this when a single panel, row, button, icon group, or control changed in Figma and the whole prefab should not be recreated. The selected GameObject remains the same object; matching imported children are updated, missing imported children are created, removed imported children are deleted, and manual non-FIGUNITY children are preserved where possible.
+
+The same operation is available from:
+
+```text
+Tools/FIGUNITY/Update Selected Element From Payload
+```
 
 ## Manual Overrides
 

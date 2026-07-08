@@ -38,6 +38,7 @@ FIGUNITY package paths:
 - Unity menu: `Tools/FIGUNITY/Importer Panel`
 - Unity menu: `Tools/FIGUNITY/Export From Figma via figma-console-mcp`
 - Unity menu: `Tools/FIGUNITY/Rebuild Prefabs From Payload`
+- Unity menu: `Tools/FIGUNITY/Update Selected Element From Payload`
 - Unity menu: `Tools/FIGUNITY/Export And Rebuild`
 - Test menu: `Tools/FIGUNITY/Tests/Create Test Menus In Figma`
 - Test menu: `Tools/FIGUNITY/Tests/Create Export Rebuild And Build Test Scene`
@@ -53,6 +54,8 @@ FIGUNITY handles the core conversion rules: `TEXT` to `TextMeshProUGUI`, simple 
 Use `figunity:*` tags in a Figma node name or description when automatic detection is ambiguous. Supported overrides include `figunity:raw`, `figunity:raster`, `figunity:image`, `figunity:container`, `figunity:background`, `figunity:visual`, `figunity:text`, `figunity:ignore`, `figunity:button`, `figunity:toggle`, `figunity:input`, `figunity:dropdown`, `figunity:scroll`, `figunity:tab`, `figunity:slider`, `figunity:passive-slider`, `figunity:mask`, `figunity:no-mask`, `figunity:no-control`, `figunity:no-slider`, and `figunity:no-meter`. The importer strips these tags from Unity object names, preserves them in `FigunityImportedNode`, and writes decision reasons into diagnostics.
 
 Use `Tools/FIGUNITY/Importer Panel` when the user needs a visual import workflow. The panel reads exportable Figma panels through `figma-console-mcp`, highlights selected rows, supports `Import Selected` and `Import All`, writes a temporary frame config under the import folder, then runs the same export and prefab rebuild pipeline. Its `Settings` tab edits the same `FigunitySettings.asset` values as `Project Settings > FIGUNITY`.
+
+Use the Inspector `Update` button on any object with `FigunityImportedNode` metadata when only the selected panel or child subtree should be refreshed from the latest payload. This keeps the selected GameObject in place, updates matching imported children, creates newly added imported children, removes imported children that disappeared from Figma, and preserves manual non-FIGUNITY children where possible. The menu `Tools/FIGUNITY/Update Selected Element From Payload` runs the same selected-element update path.
 
 When extending a project-specific Figma import:
 1. Prefer `Tools/FIGUNITY/Importer Panel` for selecting and importing multiple Figma panels visually; use `Assets/FIGUNITY/figunity.frames.json` for repeatable scripted imports.
