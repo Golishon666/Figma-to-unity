@@ -274,6 +274,30 @@ function hasVisibleEffects(node) {
   return Array.isArray(node.effects) && node.effects.some((effect) => effect.visible !== false);
 }
 
+function hasOnlySolidPaints(paints) {
+  const visible = visiblePaints(paints);
+  if (visible.length === 0) return true;
+  return visible.every((paint) => paint.type === "SOLID" && !paint.hasImage);
+}
+
+function isEditablePrimitive(node) {
+  if (!node || node.type === "TEXT") return false;
+  const type = node.type || "";
+  return type !== "VECTOR" &&
+    type !== "BOOLEAN_OPERATION" &&
+    type !== "STAR" &&
+    type !== "POLYGON" &&
+    type !== "LINE";
+}
+
+function hasEditablePaint(node) {
+  if (!isEditablePrimitive(node) || hasVisibleEffects(node)) return false;
+  const fills = visiblePaints(node.fills);
+  const strokes = visiblePaints(node.strokes);
+  if (fills.length === 0 && strokes.length === 0) return false;
+  return hasOnlySolidPaints(node.fills) && hasOnlySolidPaints(node.strokes);
+}
+
 function hasRenderablePaint(node) {
   return visiblePaints(node.fills).length > 0 || visiblePaints(node.strokes).length > 0 || hasVisibleEffects(node);
 }
@@ -432,12 +456,12 @@ function renderDecision(node, children, overrides) {
   if (children.length > 0 && ownsFigmaMask(children)) return { mode: "composite", reason: "Figma mask group" };
   if (children.length === 0) {
     return hasRenderablePaint(node)
-      ? { mode: "visual", reason: "leaf visual paint" }
+      ? { mode: "visual", reason: hasEditablePaint(node) ? "editable solid paint" : "leaf visual paint" }
       : { mode: "container", reason: "leaf container" };
   }
 
   return hasRenderablePaint(node)
-    ? { mode: "background", reason: "painted container background" }
+    ? { mode: "background", reason: hasEditablePaint(node) ? "editable solid background" : "painted container background" }
     : { mode: "container", reason: "container" };
 }
 
@@ -482,7 +506,7 @@ async function traverse(node, parentId, depth, siblingIndex, path) {
     children: []
   };
 
-  if (mode === "visual" || mode === "background" || mode === "composite") {
+  if (mode === "composite" || ((mode === "visual" || mode === "background") && !hasEditablePaint(node))) {
     rasterJobs.push({ id: node.id, name: node.name || node.type, mode, bounds: data.bounds, path, type: node.type });
   }
 

@@ -417,6 +417,9 @@ namespace Figunity.Editor
 
             Color color;
             var hasSolid = FigunityPaintRules.TrySolid(node, out color);
+            Color strokeColor;
+            float strokeWidth;
+            var hasStroke = FigunityPaintRules.TryStroke(node, out strokeColor, out strokeWidth);
             var exactImage = AttachRawImage(node, rect);
             if (exactImage != null)
             {
@@ -425,24 +428,29 @@ namespace Figunity.Editor
 
             if (preferSolid || FigunityPaintRules.IsFlatFill(node) || string.IsNullOrWhiteSpace(node.assetPath))
             {
-                if (!hasSolid && string.IsNullOrWhiteSpace(node.assetPath))
+                if (!hasSolid && !hasStroke && string.IsNullOrWhiteSpace(node.assetPath))
                 {
                     return null;
                 }
 
-                if (hasSolid && options.createRoundedRectGraphics && ShouldUseEllipseGraphic(node))
+                var useShapeGraphic = options.createRoundedRectGraphics || hasStroke;
+                if ((hasSolid || hasStroke) && useShapeGraphic && ShouldUseEllipseGraphic(node))
                 {
                     var ellipse = rect.gameObject.AddComponent<FigunityEllipseGraphic>();
-                    ellipse.color = color;
+                    ellipse.color = hasSolid ? color : Color.clear;
+                    ellipse.StrokeColor = strokeColor;
+                    ellipse.StrokeWidth = strokeWidth;
                     ellipse.raycastTarget = false;
                     return ellipse;
                 }
 
-                if (hasSolid && options.createRoundedRectGraphics && node.cornerRadius > 0.5f)
+                if ((hasSolid || hasStroke) && useShapeGraphic && (node.cornerRadius > 0.5f || hasStroke))
                 {
                     var rounded = rect.gameObject.AddComponent<FigunityRoundedRectGraphic>();
-                    rounded.color = color;
+                    rounded.color = hasSolid ? color : Color.clear;
                     rounded.CornerRadius = node.cornerRadius;
+                    rounded.StrokeColor = strokeColor;
+                    rounded.StrokeWidth = strokeWidth;
                     rounded.raycastTarget = false;
                     return rounded;
                 }

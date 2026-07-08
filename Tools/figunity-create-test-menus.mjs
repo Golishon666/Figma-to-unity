@@ -172,6 +172,12 @@ function rect(parent, name, x, y, w, h, fill = "#232B36", radius = 0) {
   return node;
 }
 
+function outline(node, hex = "#7BC4FF", weight = 1, opacity = 1) {
+  node.strokes = [solid(hex, opacity)];
+  node.strokeWeight = weight;
+  return node;
+}
+
 function text(parent, name, value, x, y, w, h, size = 20, fill = "#F4F1E8", bold = false) {
   const node = figma.createText();
   node.name = name;
@@ -194,6 +200,7 @@ function button(parent, name, label, x, y, w, h, fill = "#C7753D") {
   group.resize(w, h);
   group.fills = [solid(fill)];
   group.cornerRadius = 10;
+  outline(group, "#F4F1E8", 1, 0.22);
   group.layoutMode = "HORIZONTAL";
   group.primaryAxisAlignItems = "CENTER";
   group.counterAxisAlignItems = "CENTER";
@@ -238,6 +245,7 @@ function input(parent, name, x, y, w) {
   group.resize(w, 48);
   group.fills = [solid("#1C232D")];
   group.cornerRadius = 8;
+  outline(group, "#7BC4FF", 1, 0.45);
   parent.appendChild(group);
   text(group, "Placeholder", "Type player name", 14, 12, w - 28, 22, 16, "#8E99A8");
   return group;
@@ -251,6 +259,7 @@ function dropdown(parent, name, x, y, w) {
   group.resize(w, 48);
   group.fills = [solid("#1C232D")];
   group.cornerRadius = 8;
+  outline(group, "#7BC4FF", 1, 0.35);
   parent.appendChild(group);
   text(group, "Value", "Normal", 14, 12, w - 60, 22, 16);
   text(group, "Icon", "v", w - 34, 10, 20, 22, 18);
@@ -265,6 +274,7 @@ function manualOverrideDemo(parent, x, y) {
   raw.resize(320, 116);
   raw.fills = [solid("#202832")];
   raw.cornerRadius = 18;
+  outline(raw, "#8D5BE0", 2, 0.65);
   parent.appendChild(raw);
 
   rect(raw, "Visual - Accent", 20, 20, 78, 76, "#8D5BE0", 18);
@@ -279,6 +289,7 @@ function manualOverrideDemo(parent, x, y) {
   passive.resize(320, 52);
   passive.fills = [solid("#263241")];
   passive.cornerRadius = 10;
+  outline(passive, "#E0B15B", 1, 0.55);
   parent.appendChild(passive);
   text(passive, "Label", "Button-looking art, no Button", 18, 14, 260, 22, 16, "#F4F1E8", true);
   return raw;
@@ -292,6 +303,7 @@ function card(parent, index, x, y) {
   group.resize(300, 86);
   group.fills = [solid("#202832")];
   group.cornerRadius = 10;
+  outline(group, "#7BC4FF", 1, 0.18);
   parent.appendChild(group);
   text(group, "Title", "Mission " + index, 18, 14, 180, 22, 18, "#F4F1E8", true);
   text(group, "Subtitle", "Repeated item prefab candidate", 18, 42, 220, 20, 13, "#A7B1BF");
@@ -309,7 +321,7 @@ main.itemSpacing = 18;
 main.primaryAxisSizingMode = "FIXED";
 main.counterAxisSizingMode = "FIXED";
 text(main, "Title", "FIGUNITY TEST MENU", 32, 28, 520, 40, 30, "#F4F1E8", true);
-rect(main, "Panel - Rounded Status", 32, 86, 420, 116, "#202832", 18);
+outline(rect(main, "Panel - Rounded Status", 32, 86, 420, 116, "#202832", 18), "#7BC4FF", 2, 0.45);
 text(main, "Status Label", "Rounded panel + TMP text", 56, 112, 330, 26, 18);
 slider(main, "Music Volume", 56, 154, 330, 0.68, true);
 button(main, "Start", "START", 32, 224, 180, 54);

@@ -70,7 +70,7 @@ FIGUNITY converts:
 
 - `renderMode: "text"` to `TextMeshProUGUI`
 - simple solid nodes to `Image`
-- simple rounded solid nodes to `FigunityRoundedRectGraphic`
+- simple rounded, circular, or stroked solid nodes to editable FIGUNITY graphics
 - exported visual/background nodes with `assetPath` to `RawImage`
 - nodes whose names contain `button` to `Button`
 - groups with `Track` and `Fill` children to read-only `Slider`

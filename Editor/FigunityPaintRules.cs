@@ -29,6 +29,31 @@ namespace Figunity.Editor
             return false;
         }
 
+        public static bool TryStroke(FigunityNode node, out Color color, out float width)
+        {
+            color = Color.clear;
+            width = 0f;
+            if (node == null || node.strokes == null || node.strokeWeight <= 0f)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < node.strokes.Count; i++)
+            {
+                var paint = node.strokes[i];
+                if (paint == null || !string.Equals(paint.type, "SOLID", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                color = ConvertColor(paint, NodeAlpha(node));
+                width = Mathf.Max(0f, node.strokeWeight);
+                return color.a > 0f && width > 0f;
+            }
+
+            return false;
+        }
+
         public static bool IsFlatFill(FigunityNode node)
         {
             if (node == null || node.fills == null || node.fills.Count != 1)
