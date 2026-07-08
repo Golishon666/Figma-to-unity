@@ -9,6 +9,7 @@
 - Added a visual Importer Panel with Figma panel discovery, highlighted selection, Import Selected, Import All, and an embedded Settings tab.
 - Added a Unity Editor import flow that calls the external `figma-console-mcp` server.
 - Added in-place selected element updates from the latest payload, including an Inspector `Update` button on imported nodes.
+- Fixed rasterized glyph/icon text nodes being rebuilt as TMP text instead of their exported `RawImage` asset.
 - Added configurable Figma frame export to `Assets/FIGUNITY/Imports`.
 - Added generic UGUI prefab generation with TextMeshPro text, Image/RawImage visuals, Buttons, and read-only Slider meters.
 - Added a neutral sample frame configuration.

@@ -101,8 +101,8 @@ namespace Figunity.Editor
         public string assetPath;
 
         public bool CarriesText =>
-            string.Equals(type, "TEXT", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(renderMode, "text", StringComparison.OrdinalIgnoreCase);
+            string.Equals(renderMode, "text", StringComparison.OrdinalIgnoreCase) ||
+            (string.IsNullOrWhiteSpace(renderMode) && string.Equals(type, "TEXT", StringComparison.OrdinalIgnoreCase));
     }
 
     [Serializable]
