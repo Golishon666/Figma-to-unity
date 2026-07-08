@@ -19,6 +19,11 @@ namespace Figunity.Editor
     {
         public static FigunityControlKind Resolve(FigunityNode node)
         {
+            if (node != null && node.CarriesText)
+            {
+                return FigunityControlKind.None;
+            }
+
             var hint = FigunityNameRules.Compact(node != null ? node.controlHint : string.Empty);
             var name = FigunityNameRules.Compact(node != null ? node.name : string.Empty);
             if (!string.IsNullOrEmpty(hint))

@@ -300,6 +300,8 @@ function compactName(value) {
 }
 
 function inferControlHint(node) {
+  if (node.type === "TEXT") return "";
+
   const name = compactName(node.name);
   if (name.includes("scrollview") || name.includes("scrollrect") || name.startsWith("scroll")) return "scroll";
   if (name.startsWith("toggle") || name.includes("checkbox") || name.includes("switch")) return "toggle";
@@ -343,15 +345,24 @@ function constraintsPayload(node) {
     : null;
 }
 
-function componentPayload(node) {
-  if (node.type !== "INSTANCE" || !node.mainComponent) {
+async function componentPayload(node) {
+  if (node.type !== "INSTANCE") {
     return { isInstance: false, componentKey: "", componentName: "" };
+  }
+
+  let component = null;
+  try {
+    component = typeof node.getMainComponentAsync === "function"
+      ? await node.getMainComponentAsync()
+      : node.mainComponent;
+  } catch {
+    component = null;
   }
 
   return {
     isInstance: true,
-    componentKey: node.mainComponent.key || node.mainComponent.id || "",
-    componentName: node.mainComponent.name || ""
+    componentKey: component ? (component.key || component.id || "") : "",
+    componentName: component ? (component.name || "") : ""
   };
 }
 
@@ -387,7 +398,7 @@ function renderIntent(node, children) {
   return hasRenderablePaint(node) ? "background" : "container";
 }
 
-function traverse(node, parentId, depth, siblingIndex, path) {
+async function traverse(node, parentId, depth, siblingIndex, path) {
   nodeCount++;
   const children = visibleChildren(node);
   const mode = renderIntent(node, children);
@@ -416,7 +427,7 @@ function traverse(node, parentId, depth, siblingIndex, path) {
     strokes: visiblePaints(node.strokes),
     strokeWeight: typeof node.strokeWeight === "number" ? node.strokeWeight : 0,
     cornerRadius: typeof node.cornerRadius === "number" ? node.cornerRadius : 0,
-    ...componentPayload(node),
+    ...(await componentPayload(node)),
     repeatKey: repeatKey(node),
     text: node.type === "TEXT" ? textPayload(node) : null,
     children: []
@@ -426,8 +437,8 @@ function traverse(node, parentId, depth, siblingIndex, path) {
     rasterJobs.push({ id: node.id, name: node.name || node.type, mode, bounds: data.bounds, path, type: node.type });
   }
 
-  data.children = children.map((child, index) =>
-    traverse(child, node.id, depth + 1, index, path + "/" + (child.name || child.type) + "[" + index + "]"));
+  data.children = await Promise.all(children.map((child, index) =>
+    traverse(child, node.id, depth + 1, index, path + "/" + (child.name || child.type) + "[" + index + "]")));
 
   return data;
 }
@@ -488,7 +499,7 @@ function copyCornerRadii(source, target) {
   }
 }
 
-const tree = traverse(root, null, 0, 0, root.name || root.type);
+const tree = await traverse(root, null, 0, 0, root.name || root.type);
 const exports = [];
 for (let i = 0; i < rasterJobs.length; i++) exports.push(await rasterize(rasterJobs[i], i));
 

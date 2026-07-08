@@ -926,14 +926,31 @@ namespace Figunity.Editor
         private static Graphic EnsureRaycastGraphic(RectTransform rect, Graphic graphic)
         {
             var target = graphic;
+            if (rect == null)
+            {
+                return target;
+            }
+
+            if (target == null)
+            {
+                target = rect.GetComponent<Graphic>();
+            }
+
             if (target == null)
             {
                 var image = rect.gameObject.AddComponent<Image>();
-                image.color = new Color(1f, 1f, 1f, 0f);
-                target = image;
+                if (image != null)
+                {
+                    image.color = new Color(1f, 1f, 1f, 0f);
+                    target = image;
+                }
             }
 
-            target.raycastTarget = true;
+            if (target != null)
+            {
+                target.raycastTarget = true;
+            }
+
             return target;
         }
 
