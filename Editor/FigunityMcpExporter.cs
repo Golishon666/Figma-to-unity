@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -22,20 +23,46 @@ namespace Figunity.Editor
 
         public static void Export(FigunitySettingsAsset settings)
         {
+            Export(settings, null);
+        }
+
+        public static void Export(FigunitySettingsAsset settings, string frameConfigPathOverride)
+        {
             if (settings == null) throw new ArgumentNullException(nameof(settings));
             FigunitySettings.EnsureUnityFolder(settings.importFolder);
 
+            var configPath = string.IsNullOrWhiteSpace(frameConfigPathOverride) ? settings.frameConfigPath : frameConfigPathOverride;
+            var stdout = RunNodeWorker(
+                settings,
+                "figunity-export.mjs",
+                new Dictionary<string, string>
+                {
+                    { "FIGUNITY_OUT_DIR", settings.importFolder },
+                    { "FIGUNITY_FRAMES", configPath },
+                    { "FIGUNITY_RASTER_SCALE", Mathf.Clamp(settings.rasterScale, 1, 4).ToString() }
+                },
+                TimeoutMilliseconds,
+                "FIGUNITY export");
+
+            UnityEngine.Debug.Log("FIGUNITY export completed:\n" + stdout);
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            FigunityTextureImporter.ConfigureElementTextures(settings.importFolder);
+        }
+
+        internal static string RunNodeWorker(FigunitySettingsAsset settings, string workerFileName, IReadOnlyDictionary<string, string> environmentVariables, int timeoutMilliseconds, string operationName)
+        {
+            if (settings == null) throw new ArgumentNullException(nameof(settings));
+
             var projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
-            var workerPath = Path.Combine(ResolvePackageRoot(), "Tools", "figunity-export.mjs");
+            var workerPath = Path.Combine(ResolvePackageRoot(), "Tools", workerFileName);
             if (!File.Exists(workerPath))
             {
                 throw new FileNotFoundException("FIGUNITY worker is missing.", workerPath);
             }
 
-            var nodePath = ResolveNodePath();
             var startInfo = new ProcessStartInfo
             {
-                FileName = nodePath,
+                FileName = ResolveNodePath(),
                 Arguments = Quote(workerPath),
                 WorkingDirectory = projectRoot,
                 UseShellExecute = false,
@@ -47,12 +74,17 @@ namespace Figunity.Editor
             };
 
             startInfo.EnvironmentVariables["FIGMA_WS_PORT"] = string.IsNullOrWhiteSpace(settings.figmaWsPort) ? "9225" : settings.figmaWsPort.Trim();
-            startInfo.EnvironmentVariables["FIGUNITY_OUT_DIR"] = settings.importFolder;
-            startInfo.EnvironmentVariables["FIGUNITY_FRAMES"] = settings.frameConfigPath;
-            startInfo.EnvironmentVariables["FIGUNITY_RASTER_SCALE"] = Mathf.Clamp(settings.rasterScale, 1, 4).ToString();
             if (!string.IsNullOrWhiteSpace(settings.expectedFileName))
             {
                 startInfo.EnvironmentVariables["FIGUNITY_FILE_NAME"] = settings.expectedFileName;
+            }
+
+            if (environmentVariables != null)
+            {
+                foreach (var pair in environmentVariables)
+                {
+                    startInfo.EnvironmentVariables[pair.Key] = pair.Value ?? string.Empty;
+                }
             }
 
             using (var process = new Process { StartInfo = startInfo })
@@ -72,7 +104,7 @@ namespace Figunity.Editor
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
 
-                if (!process.WaitForExit(TimeoutMilliseconds))
+                if (!process.WaitForExit(timeoutMilliseconds))
                 {
                     try
                     {
@@ -83,19 +115,18 @@ namespace Figunity.Editor
                         // The worker may exit between timeout and Kill.
                     }
 
-                    throw new TimeoutException("FIGUNITY timed out while exporting from Figma.");
+                    throw new TimeoutException(operationName + " timed out while communicating with Figma.");
                 }
+
+                process.WaitForExit();
 
                 if (process.ExitCode != 0)
                 {
-                    throw new InvalidOperationException("FIGUNITY export failed.\nSTDOUT:\n" + stdout + "\nSTDERR:\n" + stderr);
+                    throw new InvalidOperationException(operationName + " failed.\nSTDOUT:\n" + stdout + "\nSTDERR:\n" + stderr);
                 }
 
-                UnityEngine.Debug.Log("FIGUNITY export completed:\n" + stdout);
+                return stdout.ToString();
             }
-
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-            FigunityTextureImporter.ConfigureElementTextures(settings.importFolder);
         }
 
         private static string ResolvePackageRoot()

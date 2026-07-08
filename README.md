@@ -54,6 +54,7 @@ FIGUNITY does not vendor that MCP server. The Unity menu starts the locally inst
 
 Use the Unity menu:
 
+- `Tools/FIGUNITY/Importer Panel`
 - `Tools/FIGUNITY/Export From Figma via figma-console-mcp`
 - `Tools/FIGUNITY/Rebuild Prefabs From Payload`
 - `Tools/FIGUNITY/Export And Rebuild`
@@ -72,6 +73,19 @@ Default paths:
 - test scene: `Assets/FIGUNITY/TestScene/FigunityTestMenus.unity`
 
 If `Assets/FIGUNITY/figunity.frames.json` exists, FIGUNITY exports those frames by name or node id. If the config is missing, it exports the current Figma selection and writes it as `selected-node`.
+
+## Importer Panel
+
+Open `Tools/FIGUNITY/Importer Panel` for a visual workflow:
+
+1. Start the Figma Desktop Bridge plugin.
+2. Click `Refresh Panels` to read exportable Figma frames from the active file.
+3. Click rows to select panels. Selected rows are highlighted.
+4. Click `Import Selected` or `Import All`.
+
+The panel writes a temporary frame config under the configured import folder, exports through `figma-console-mcp`, then rebuilds prefabs with the same importer settings as the menu workflow.
+
+The `Settings` tab edits the same `Assets/FIGUNITY/FigunitySettings.asset` used by the Unity project settings provider: port, expected Figma file name, raster scale, import/prefab paths, masks, auto-layout, repeated prefab extraction, diagnostics, manual-child preservation, and TMP font mappings.
 
 ## Frame Config
 

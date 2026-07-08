@@ -3,6 +3,7 @@
 ## 0.1.0
 
 - Initial standalone FIGUNITY Unity Package Manager package.
+- Added a visual Importer Panel with Figma panel discovery, highlighted selection, Import Selected, Import All, and an embedded Settings tab.
 - Added a Unity Editor import flow that calls the external `figma-console-mcp` server.
 - Added configurable Figma frame export to `Assets/FIGUNITY/Imports`.
 - Added generic UGUI prefab generation with TextMeshPro text, Image/RawImage visuals, Buttons, and read-only Slider meters.

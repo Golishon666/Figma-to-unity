@@ -35,6 +35,7 @@ Expected transport:
 - required tools: `figma_get_status` and `figma_execute`
 
 FIGUNITY package paths:
+- Unity menu: `Tools/FIGUNITY/Importer Panel`
 - Unity menu: `Tools/FIGUNITY/Export From Figma via figma-console-mcp`
 - Unity menu: `Tools/FIGUNITY/Rebuild Prefabs From Payload`
 - Unity menu: `Tools/FIGUNITY/Export And Rebuild`
@@ -49,8 +50,10 @@ FIGUNITY package paths:
 
 FIGUNITY handles the core conversion rules: `TEXT` to `TextMeshProUGUI`, simple solid panels to `Image` or `FigunityRoundedRectGraphic`, complex/vector/image/background nodes to exported PNG `RawImage`, `Button - ...` frames to `Button`, Figma meter groups with `Track`/`Fill`/`Handle` to passive or active `UnityEngine.UI.Slider`, `clipsContent` and mask nodes to Unity masks, Figma auto-layout hints to layout groups, and common toggle/input/dropdown/scroll/tab controls to UGUI/TMP components.
 
+Use `Tools/FIGUNITY/Importer Panel` when the user needs a visual import workflow. The panel reads exportable Figma panels through `figma-console-mcp`, highlights selected rows, supports `Import Selected` and `Import All`, writes a temporary frame config under the import folder, then runs the same export and prefab rebuild pipeline. Its `Settings` tab edits the same `FigunitySettings.asset` values as `Project Settings > FIGUNITY`.
+
 When extending a project-specific Figma import:
-1. Add frames to `Assets/FIGUNITY/figunity.frames.json` or copy the package sample config into `Assets/FIGUNITY/`.
+1. Prefer `Tools/FIGUNITY/Importer Panel` for selecting and importing multiple Figma panels visually; use `Assets/FIGUNITY/figunity.frames.json` for repeatable scripted imports.
 2. Use FIGUNITY to export payload and generate preview prefabs.
 3. Add project-specific runtime bindings in the Unity project, not inside FIGUNITY.
 4. Preserve dirty-tree changes outside the requested importer/generated prefab scope.
