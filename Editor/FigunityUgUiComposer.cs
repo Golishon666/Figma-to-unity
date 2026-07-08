@@ -46,7 +46,7 @@ namespace Figunity.Editor
         public static Slider AddReadonlyProgress(string name, RectTransform parent, float x, float y, float width, float height, Color trackColor, Color fillColor, float value)
         {
             var root = MakeRect(name, parent, new FigunityBounds(x, y, width, height), new FigunityBounds(0f, 0f, 0f, 0f));
-            return AddSlider(root, width, height, trackColor, fillColor, Mathf.Clamp01(value), null);
+            return AddSlider(root, width, height, trackColor, fillColor, Mathf.Clamp01(value), null, default);
         }
 
         public static void Clear(Transform parent)
@@ -79,7 +79,7 @@ namespace Figunity.Editor
             FigunityMeterShape meter;
             if (FigunityMeterScanner.TryResolve(node, out meter))
             {
-                ComposeMeter(meter, parent, parentBounds, report);
+                ComposeMeter(meter, parent, parentBounds, options, report);
                 return;
             }
 
@@ -223,10 +223,20 @@ namespace Figunity.Editor
             var graphic = AttachVisual(maskNode, rect, options);
             if (graphic == null)
             {
-                var image = rect.gameObject.AddComponent<Image>();
-                image.color = Color.white;
-                image.raycastTarget = false;
-                graphic = image;
+                if (options.createRoundedRectGraphics && ShouldUseEllipseGraphic(maskNode))
+                {
+                    var ellipse = rect.gameObject.AddComponent<FigunityEllipseGraphic>();
+                    ellipse.color = Color.white;
+                    ellipse.raycastTarget = false;
+                    graphic = ellipse;
+                }
+                else
+                {
+                    var image = rect.gameObject.AddComponent<Image>();
+                    image.color = Color.white;
+                    image.raycastTarget = false;
+                    graphic = image;
+                }
             }
 
             var mask = rect.gameObject.AddComponent<Mask>();
@@ -236,7 +246,7 @@ namespace Figunity.Editor
             return rect;
         }
 
-        private static void ComposeMeter(FigunityMeterShape meter, RectTransform parent, FigunityBounds parentBounds, FigunityBuildReport report)
+        private static void ComposeMeter(FigunityMeterShape meter, RectTransform parent, FigunityBounds parentBounds, FigunityFrameOptions options, FigunityBuildReport report)
         {
             var node = meter.container;
             var rect = MakeRect(FigunityNameRules.ToObjectName(node.name), parent, node.bounds, parentBounds);
@@ -256,12 +266,12 @@ namespace Figunity.Editor
             }
 
             var trackHeight = Mathf.Max(2f, meter.track.bounds.height);
-            var slider = AddSlider(rect, Mathf.Max(1f, node.bounds.width), trackHeight, trackColor, fillColor, meter.normalizedValue, meter);
+            var slider = AddSlider(rect, Mathf.Max(1f, node.bounds.width), trackHeight, trackColor, fillColor, meter.normalizedValue, meter, options);
             slider.name = rect.name;
             report.sliders++;
         }
 
-        private static Slider AddSlider(RectTransform rect, float width, float height, Color trackColor, Color fillColor, float value, FigunityMeterShape? source)
+        private static Slider AddSlider(RectTransform rect, float width, float height, Color trackColor, Color fillColor, float value, FigunityMeterShape? source, FigunityFrameOptions options)
         {
             var trackBounds = source.HasValue ? source.Value.track.bounds : new FigunityBounds(0f, 0f, width, height);
             var localTrack = source.HasValue
@@ -273,18 +283,32 @@ namespace Figunity.Editor
                 : trackBounds;
 
             var track = MakeRect("Track", rect, localTrack, new FigunityBounds(0f, 0f, 0f, 0f));
-            var trackImage = track.gameObject.AddComponent<Image>();
-            trackImage.color = trackColor;
-            trackImage.raycastTarget = false;
+            var trackNode = source.HasValue ? source.Value.track : null;
+            var trackGraphic = trackNode != null ? AttachGraphic(trackNode, track, true, options) : null;
+            if (trackGraphic == null)
+            {
+                var trackImage = track.gameObject.AddComponent<Image>();
+                trackImage.color = trackColor;
+                trackGraphic = trackImage;
+            }
+
+            trackGraphic.raycastTarget = false;
 
             var fillArea = MakeRect("Fill Area", rect, localTrack, new FigunityBounds(0f, 0f, 0f, 0f));
             fillArea.anchorMin = new Vector2(0f, 1f);
             fillArea.anchorMax = new Vector2(0f, 1f);
 
             var fill = MakeRect("Fill", fillArea, new FigunityBounds(0f, 0f, localTrack.width, localTrack.height), new FigunityBounds(0f, 0f, 0f, 0f));
-            var fillImage = fill.gameObject.AddComponent<Image>();
-            fillImage.color = fillColor;
-            fillImage.raycastTarget = false;
+            var fillNode = source.HasValue ? source.Value.fill : null;
+            var fillGraphic = fillNode != null ? AttachGraphic(fillNode, fill, true, options) : null;
+            if (fillGraphic == null)
+            {
+                var fillImage = fill.gameObject.AddComponent<Image>();
+                fillImage.color = fillColor;
+                fillGraphic = fillImage;
+            }
+
+            fillGraphic.raycastTarget = false;
 
             var handleArea = MakeRect("Handle Slide Area", rect, localTrack, new FigunityBounds(0f, 0f, 0f, 0f));
             var handleBounds = source.HasValue && source.Value.handle != null
@@ -303,12 +327,19 @@ namespace Figunity.Editor
                 localHandle,
                 new FigunityBounds(0f, 0f, 0f, 0f));
             handle.pivot = new Vector2(0.5f, 0.5f);
-            var handleImage = handle.gameObject.AddComponent<Image>();
             Color handleColor;
-            handleImage.color = source.HasValue && source.Value.handle != null && FigunityPaintRules.TrySolid(source.Value.handle, out handleColor)
-                ? handleColor
-                : (source.HasValue && source.Value.handle != null ? fillColor : new Color(fillColor.r, fillColor.g, fillColor.b, 0f));
-            handleImage.raycastTarget = source.HasValue && source.Value.interactable;
+            var handleNode = source.HasValue ? source.Value.handle : null;
+            var handleGraphic = handleNode != null ? AttachGraphic(handleNode, handle, true, options) : null;
+            if (handleGraphic == null)
+            {
+                var handleImage = handle.gameObject.AddComponent<Image>();
+                handleImage.color = handleNode != null && FigunityPaintRules.TrySolid(handleNode, out handleColor)
+                    ? handleColor
+                    : (handleNode != null ? fillColor : new Color(fillColor.r, fillColor.g, fillColor.b, 0f));
+                handleGraphic = handleImage;
+            }
+
+            handleGraphic.raycastTarget = source.HasValue && source.Value.interactable;
 
             var slider = rect.gameObject.AddComponent<Slider>();
             slider.transition = Selectable.Transition.None;
@@ -317,7 +348,7 @@ namespace Figunity.Editor
             slider.maxValue = 1f;
             slider.fillRect = fill;
             slider.handleRect = handle;
-            slider.targetGraphic = handleImage;
+            slider.targetGraphic = handleGraphic;
             SetSliderValue(slider, value);
             return slider;
         }
@@ -377,6 +408,14 @@ namespace Figunity.Editor
                     return null;
                 }
 
+                if (hasSolid && options.createRoundedRectGraphics && ShouldUseEllipseGraphic(node))
+                {
+                    var ellipse = rect.gameObject.AddComponent<FigunityEllipseGraphic>();
+                    ellipse.color = color;
+                    ellipse.raycastTarget = false;
+                    return ellipse;
+                }
+
                 if (hasSolid && options.createRoundedRectGraphics && node.cornerRadius > 0.5f)
                 {
                     var rounded = rect.gameObject.AddComponent<FigunityRoundedRectGraphic>();
@@ -397,6 +436,24 @@ namespace Figunity.Editor
             rawImage.color = rawImage.texture == null ? Color.clear : new Color(1f, 1f, 1f, FigunityPaintRules.NodeAlpha(node));
             rawImage.raycastTarget = false;
             return rawImage;
+        }
+
+        private static bool ShouldUseEllipseGraphic(FigunityNode node)
+        {
+            if (node == null)
+            {
+                return false;
+            }
+
+            if (string.Equals(node.type, "ELLIPSE", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var size = Mathf.Min(node.bounds.width, node.bounds.height);
+            return size > 0.01f &&
+                   Mathf.Abs(node.bounds.width - node.bounds.height) <= 0.5f &&
+                   node.cornerRadius >= size * 0.49f;
         }
 
         private static void AttachText(FigunityNode node, RectTransform rect, FigunityFrameOptions options)
