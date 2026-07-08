@@ -1,0 +1,24 @@
+{
+  "name": "com.golishon666.figunity",
+  "displayName": "FIGUNITY",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "description": "Figma-to-Unity UGUI importer powered by the external figma-console-mcp Desktop Bridge.",
+  "keywords": [
+    "figma",
+    "unity",
+    "ugui",
+    "importer",
+    "mcp"
+  ],
+  "author": {
+    "name": "Golishon666"
+  },
+  "samples": [
+    {
+      "displayName": "Frame config",
+      "description": "Example FIGUNITY frame list for a Figma UI file.",
+      "path": "Samples~/Frame Config"
+    }
+  ]
+}

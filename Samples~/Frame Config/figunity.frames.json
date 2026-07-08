@@ -1,0 +1,16 @@
+{
+  "expectedFileName": "My UI File",
+  "frames": [
+    {
+      "key": "mainScreen",
+      "slug": "main-screen",
+      "name": "Main Screen"
+    },
+    {
+      "key": "settingsScreen",
+      "slug": "settings-screen",
+      "name": "Settings Screen",
+      "optional": true
+    }
+  ]
+}
