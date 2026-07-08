@@ -329,7 +329,7 @@ namespace Figunity.Editor
             handle.pivot = new Vector2(0.5f, 0.5f);
             Color handleColor;
             var handleNode = source.HasValue ? source.Value.handle : null;
-            var handleGraphic = handleNode != null ? AttachGraphic(handleNode, handle, true, options) : null;
+            var handleGraphic = AttachHandleGraphic(handleNode, handle, options);
             if (handleGraphic == null)
             {
                 var handleImage = handle.gameObject.AddComponent<Image>();
@@ -401,6 +401,12 @@ namespace Figunity.Editor
 
             Color color;
             var hasSolid = FigunityPaintRules.TrySolid(node, out color);
+            var exactImage = AttachRawImage(node, rect);
+            if (exactImage != null)
+            {
+                return exactImage;
+            }
+
             if (preferSolid || FigunityPaintRules.IsFlatFill(node) || string.IsNullOrWhiteSpace(node.assetPath))
             {
                 if (!hasSolid && string.IsNullOrWhiteSpace(node.assetPath))
@@ -431,9 +437,30 @@ namespace Figunity.Editor
                 return image;
             }
 
+            return null;
+        }
+
+        private static Graphic AttachHandleGraphic(FigunityNode node, RectTransform rect, FigunityFrameOptions options)
+        {
+            return AttachRawImage(node, rect) ?? (node != null ? AttachGraphic(node, rect, true, options) : null);
+        }
+
+        private static RawImage AttachRawImage(FigunityNode node, RectTransform rect)
+        {
+            if (node == null || rect == null || string.IsNullOrWhiteSpace(node.assetPath))
+            {
+                return null;
+            }
+
+            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(node.assetPath);
+            if (texture == null)
+            {
+                return null;
+            }
+
             var rawImage = rect.gameObject.AddComponent<RawImage>();
-            rawImage.texture = AssetDatabase.LoadAssetAtPath<Texture2D>(node.assetPath);
-            rawImage.color = rawImage.texture == null ? Color.clear : new Color(1f, 1f, 1f, FigunityPaintRules.NodeAlpha(node));
+            rawImage.texture = texture;
+            rawImage.color = new Color(1f, 1f, 1f, FigunityPaintRules.NodeAlpha(node));
             rawImage.raycastTarget = false;
             return rawImage;
         }
@@ -751,7 +778,7 @@ namespace Figunity.Editor
             {
                 handleRect = MakeRect("Handle", rect, handleNode.bounds, node.bounds);
                 AttachMetadata(handleNode, handleRect);
-                handleGraphic = AttachVisual(handleNode, handleRect, options);
+                handleGraphic = AttachHandleGraphic(handleNode, handleRect, options);
                 if (handleGraphic != null)
                 {
                     handleGraphic.raycastTarget = false;
