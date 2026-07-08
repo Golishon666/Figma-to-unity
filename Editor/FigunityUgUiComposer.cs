@@ -298,27 +298,42 @@ namespace Figunity.Editor
 
             fillGraphic.raycastTarget = false;
 
-            var handleArea = MakeRect("Handle Slide Area", rect, localTrack, new FigunityBounds(0f, 0f, 0f, 0f));
+            var handleNode = source.HasValue ? source.Value.handle : null;
             var handleBounds = source.HasValue && source.Value.handle != null
                 ? source.Value.handle.bounds
                 : new FigunityBounds(trackBounds.x + value * trackBounds.width - Mathf.Max(10f, localTrack.height + 6f) * 0.5f, trackBounds.y, Mathf.Max(10f, localTrack.height + 6f), Mathf.Max(10f, localTrack.height + 6f));
             var handleWidth = Mathf.Max(1f, handleBounds.width);
             var handleHeight = Mathf.Max(1f, handleBounds.height);
-            var localHandle = new FigunityBounds(
-                -handleWidth * 0.5f,
-                (localTrack.height - handleHeight) * 0.5f,
-                handleWidth,
-                handleHeight);
-            var handle = MakeRect(
-                "Handle",
-                handleArea,
-                localHandle,
-                new FigunityBounds(0f, 0f, 0f, 0f));
-            handle.pivot = new Vector2(0.5f, 0.5f);
+            var drivenHandle = source.HasValue && source.Value.interactable;
+            RectTransform handle;
+            if (drivenHandle)
+            {
+                var handleAreaBounds = new FigunityBounds(
+                    localTrack.x,
+                    localTrack.y + (localTrack.height - handleHeight) * 0.5f,
+                    localTrack.width,
+                    handleHeight);
+                var handleArea = MakeRect("Handle Slide Area", rect, handleAreaBounds, new FigunityBounds(0f, 0f, 0f, 0f));
+                handle = MakeRect("Handle", handleArea, new FigunityBounds(0f, 0f, handleWidth, handleHeight), new FigunityBounds(0f, 0f, 0f, 0f));
+                ConfigureDrivenHandle(handle, value, handleWidth);
+            }
+            else if (handleNode != null)
+            {
+                var localHandle = new FigunityBounds(
+                    handleBounds.x - source.Value.container.bounds.x,
+                    handleBounds.y - source.Value.container.bounds.y,
+                    handleWidth,
+                    handleHeight);
+                handle = MakeRect("Handle", rect, localHandle, new FigunityBounds(0f, 0f, 0f, 0f));
+            }
+            else
+            {
+                handle = null;
+            }
+
             Color handleColor;
-            var handleNode = source.HasValue ? source.Value.handle : null;
-            var handleGraphic = AttachHandleGraphic(handleNode, handle, options);
-            if (handleGraphic == null)
+            var handleGraphic = handle != null ? AttachHandleGraphic(handleNode, handle, options) : null;
+            if (handle != null && handleGraphic == null)
             {
                 var handleImage = handle.gameObject.AddComponent<Image>();
                 handleImage.color = handleNode != null && FigunityPaintRules.TrySolid(handleNode, out handleColor)
@@ -327,7 +342,10 @@ namespace Figunity.Editor
                 handleGraphic = handleImage;
             }
 
-            handleGraphic.raycastTarget = source.HasValue && source.Value.interactable;
+            if (handleGraphic != null)
+            {
+                handleGraphic.raycastTarget = drivenHandle;
+            }
 
             var slider = rect.gameObject.AddComponent<Slider>();
             slider.transition = Selectable.Transition.None;
@@ -335,10 +353,20 @@ namespace Figunity.Editor
             slider.minValue = 0f;
             slider.maxValue = 1f;
             slider.fillRect = fill;
-            slider.handleRect = handle;
+            slider.handleRect = drivenHandle ? handle : null;
             slider.targetGraphic = handleGraphic;
             SetSliderValue(slider, value);
             return slider;
+        }
+
+        private static void ConfigureDrivenHandle(RectTransform handle, float value, float width)
+        {
+            var clamped = Mathf.Clamp01(value);
+            handle.anchorMin = new Vector2(clamped, 0f);
+            handle.anchorMax = new Vector2(clamped, 1f);
+            handle.pivot = new Vector2(0.5f, 0.5f);
+            handle.anchoredPosition = Vector2.zero;
+            handle.sizeDelta = new Vector2(Mathf.Max(1f, width), 0f);
         }
 
         private static void SetSliderValue(Slider slider, float value)
@@ -356,9 +384,8 @@ namespace Figunity.Editor
 
             if (slider.handleRect != null)
             {
-                slider.handleRect.anchorMin = new Vector2(clamped, 0.5f);
-                slider.handleRect.anchorMax = new Vector2(clamped, 0.5f);
-                slider.handleRect.anchoredPosition = Vector2.zero;
+                var width = Mathf.Max(1f, slider.handleRect.sizeDelta.x);
+                ConfigureDrivenHandle(slider.handleRect, clamped, width);
             }
         }
 
