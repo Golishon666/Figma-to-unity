@@ -27,9 +27,9 @@ namespace Figunity.Editor
             root.gameObject.SetActive(options.active);
             AttachMetadata(screen.tree, root);
 
-            if (options.addRootMask)
+            if (options.addRootMask || (options.createMasks && screen.tree.clipsContent))
             {
-                root.gameObject.AddComponent<RectMask2D>();
+                EnsureComponent<RectMask2D>(root.gameObject);
             }
 
             if (options.includeRootBackground)
@@ -38,13 +38,7 @@ namespace Figunity.Editor
             }
 
             var report = new FigunityBuildReport();
-            if (screen.tree.children != null)
-            {
-                for (var i = 0; i < screen.tree.children.Count; i++)
-                {
-                    ComposeNode(screen.tree.children[i], root, rootBounds, options, report);
-                }
-            }
+            ComposeChildren(screen.tree, root, rootBounds, options, report);
 
             return new FigunityBuildResult(root, report);
         }
@@ -114,31 +108,29 @@ namespace Figunity.Editor
             AttachAutoLayoutIfNeeded(node, rect, options, report);
             AttachControlIfNeeded(node, rect, graphic, controlKind, options, report);
 
-            if (node.children == null)
+            if (ControlOwnsChildren(controlKind))
             {
                 return;
             }
 
-            for (var i = 0; i < node.children.Count; i++)
-            {
-                ComposeNode(node.children[i], rect, node.bounds, options, report);
-            }
+            ComposeChildren(node, rect, node.bounds, options, report);
         }
 
         private static void ComposeScrollView(FigunityNode node, RectTransform parent, FigunityBounds parentBounds, FigunityFrameOptions options, FigunityBuildReport report)
         {
-            var root = MakeRect(FigunityNameRules.ToObjectName(node.name), parent, node.bounds, parentBounds);
+            var visibleBounds = VisibleBoundsWithinParent(node.bounds, parentBounds);
+            var root = MakeRect(FigunityNameRules.ToObjectName(node.name), parent, visibleBounds, parentBounds);
             AttachMetadata(node, root);
             AttachLayoutElement(node, root);
             var graphic = AttachVisual(node, root, options);
 
-            var viewport = MakeRect("Viewport", root, new FigunityBounds(0f, 0f, node.bounds.width, node.bounds.height), new FigunityBounds(0f, 0f, 0f, 0f));
+            var viewport = MakeRect("Viewport", root, new FigunityBounds(0f, 0f, visibleBounds.width, visibleBounds.height), new FigunityBounds(0f, 0f, 0f, 0f));
             var viewportImage = viewport.gameObject.AddComponent<Image>();
             viewportImage.color = new Color(1f, 1f, 1f, 0.01f);
             viewportImage.raycastTarget = true;
             viewport.gameObject.AddComponent<RectMask2D>();
 
-            var content = MakeRect("Content", viewport, new FigunityBounds(0f, 0f, node.bounds.width, Mathf.Max(node.bounds.height, EstimateContentHeight(node))), new FigunityBounds(0f, 0f, 0f, 0f));
+            var content = MakeRect("Content", viewport, new FigunityBounds(0f, 0f, node.bounds.width, Mathf.Max(visibleBounds.height, EstimateContentHeight(node))), new FigunityBounds(0f, 0f, 0f, 0f));
             if (node.autoLayout != null && node.autoLayout.Enabled)
             {
                 AttachAutoLayoutIfNeeded(node, content, options, report);
@@ -154,13 +146,7 @@ namespace Figunity.Editor
             scrollRect.scrollSensitivity = 24f;
             report.scrollViews++;
 
-            if (node.children != null)
-            {
-                for (var i = 0; i < node.children.Count; i++)
-                {
-                    ComposeNode(node.children[i], content, node.bounds, options, report);
-                }
-            }
+            ComposeChildren(node, content, node.bounds, options, report);
         }
 
         private static float EstimateContentHeight(FigunityNode node)
@@ -183,6 +169,71 @@ namespace Figunity.Editor
             }
 
             return max;
+        }
+
+        private static FigunityBounds VisibleBoundsWithinParent(FigunityBounds nodeBounds, FigunityBounds parentBounds)
+        {
+            var right = parentBounds.Right > parentBounds.x ? Mathf.Min(nodeBounds.Right, parentBounds.Right) : nodeBounds.Right;
+            var bottom = parentBounds.Bottom > parentBounds.y ? Mathf.Min(nodeBounds.Bottom, parentBounds.Bottom) : nodeBounds.Bottom;
+            return new FigunityBounds(
+                nodeBounds.x,
+                nodeBounds.y,
+                Mathf.Max(1f, right - nodeBounds.x),
+                Mathf.Max(1f, bottom - nodeBounds.y));
+        }
+
+        private static void ComposeChildren(FigunityNode owner, RectTransform parent, FigunityBounds parentBounds, FigunityFrameOptions options, FigunityBuildReport report)
+        {
+            if (owner?.children == null)
+            {
+                return;
+            }
+
+            for (var i = 0; i < owner.children.Count; i++)
+            {
+                var child = owner.children[i];
+                if (child == null)
+                {
+                    continue;
+                }
+
+                if (options.createMasks && child.isMask)
+                {
+                    var maskRect = ComposeMaskHost(child, parent, parentBounds, options, report);
+                    i++;
+                    while (i < owner.children.Count && owner.children[i] != null && !owner.children[i].isMask)
+                    {
+                        ComposeNode(owner.children[i], maskRect, child.bounds, options, report);
+                        i++;
+                    }
+
+                    i--;
+                    continue;
+                }
+
+                ComposeNode(child, parent, parentBounds, options, report);
+            }
+        }
+
+        private static RectTransform ComposeMaskHost(FigunityNode maskNode, RectTransform parent, FigunityBounds parentBounds, FigunityFrameOptions options, FigunityBuildReport report)
+        {
+            var rect = MakeRect(FigunityNameRules.ToObjectName(maskNode.name), parent, maskNode.bounds, parentBounds);
+            AttachMetadata(maskNode, rect);
+            AttachLayoutElement(maskNode, rect);
+            var graphic = AttachVisual(maskNode, rect, options);
+            if (graphic == null)
+            {
+                var image = rect.gameObject.AddComponent<Image>();
+                image.color = Color.white;
+                image.raycastTarget = false;
+                graphic = image;
+            }
+
+            var mask = rect.gameObject.AddComponent<Mask>();
+            mask.showMaskGraphic = false;
+            graphic.raycastTarget = false;
+            report.masks++;
+            return rect;
         }
 
         private static void ComposeMeter(FigunityMeterShape meter, RectTransform parent, FigunityBounds parentBounds, FigunityBuildReport report)
@@ -236,14 +287,27 @@ namespace Figunity.Editor
             fillImage.raycastTarget = false;
 
             var handleArea = MakeRect("Handle Slide Area", rect, localTrack, new FigunityBounds(0f, 0f, 0f, 0f));
-            var handleSize = Mathf.Max(10f, localTrack.height + 6f);
+            var handleBounds = source.HasValue && source.Value.handle != null
+                ? source.Value.handle.bounds
+                : new FigunityBounds(trackBounds.x + value * trackBounds.width - Mathf.Max(10f, localTrack.height + 6f) * 0.5f, trackBounds.y, Mathf.Max(10f, localTrack.height + 6f), Mathf.Max(10f, localTrack.height + 6f));
+            var handleWidth = Mathf.Max(1f, handleBounds.width);
+            var handleHeight = Mathf.Max(1f, handleBounds.height);
+            var localHandle = new FigunityBounds(
+                -handleWidth * 0.5f,
+                (localTrack.height - handleHeight) * 0.5f,
+                handleWidth,
+                handleHeight);
             var handle = MakeRect(
                 "Handle",
                 handleArea,
-                new FigunityBounds(value * localTrack.width - handleSize * 0.5f, (localTrack.height - handleSize) * 0.5f, handleSize, handleSize),
+                localHandle,
                 new FigunityBounds(0f, 0f, 0f, 0f));
+            handle.pivot = new Vector2(0.5f, 0.5f);
             var handleImage = handle.gameObject.AddComponent<Image>();
-            handleImage.color = source.HasValue && source.Value.interactable ? fillColor : new Color(fillColor.r, fillColor.g, fillColor.b, 0f);
+            Color handleColor;
+            handleImage.color = source.HasValue && source.Value.handle != null && FigunityPaintRules.TrySolid(source.Value.handle, out handleColor)
+                ? handleColor
+                : (source.HasValue && source.Value.handle != null ? fillColor : new Color(fillColor.r, fillColor.g, fillColor.b, 0f));
             handleImage.raycastTarget = source.HasValue && source.Value.interactable;
 
             var slider = rect.gameObject.AddComponent<Slider>();
@@ -338,16 +402,21 @@ namespace Figunity.Editor
         private static void AttachText(FigunityNode node, RectTransform rect, FigunityFrameOptions options)
         {
             var label = rect.gameObject.AddComponent<TextMeshProUGUI>();
-            label.text = node.text != null ? node.text.characters ?? string.Empty : string.Empty;
-            label.fontSize = node.text != null && node.text.fontSize > 0f ? node.text.fontSize : 16f;
-            label.fontStyle = ResolveTextStyle(node.text != null ? node.text.fontName : null);
-            label.alignment = FigunityPaintRules.TextAlign(node.text);
-            label.color = FigunityPaintRules.TextColor(node);
+            ConfigureTextLabel(label, node.text, FigunityPaintRules.TextColor(node), options);
+        }
+
+        private static void ConfigureTextLabel(TextMeshProUGUI label, FigunityText text, Color color, FigunityFrameOptions options)
+        {
+            label.text = text != null ? text.characters ?? string.Empty : string.Empty;
+            label.fontSize = text != null && text.fontSize > 0f ? text.fontSize : 16f;
+            label.fontStyle = ResolveTextStyle(text != null ? text.fontName : null);
+            label.alignment = FigunityPaintRules.TextAlign(text);
+            label.color = color;
             label.textWrappingMode = TextWrappingModes.Normal;
             label.overflowMode = TextOverflowModes.Truncate;
             label.margin = Vector4.zero;
             label.raycastTarget = false;
-            var font = ResolveTextFont(node.text, options.settings);
+            var font = ResolveTextFont(text, options.settings);
             if (font != null)
             {
                 label.font = font;
@@ -516,23 +585,28 @@ namespace Figunity.Editor
 
         private static void AttachControlIfNeeded(FigunityNode node, RectTransform rect, Graphic graphic, FigunityControlKind kind, FigunityFrameOptions options, FigunityBuildReport report)
         {
+            if (IsTabGroupNode(node, kind))
+            {
+                EnsureComponent<ToggleGroup>(rect.gameObject);
+                return;
+            }
+
             switch (kind)
             {
                 case FigunityControlKind.Button:
-                case FigunityControlKind.Tab:
                     AttachButton(rect, graphic);
                     report.buttons++;
-                    if (kind == FigunityControlKind.Tab && rect.transform.parent != null && rect.transform.parent.GetComponent<ToggleGroup>() == null)
-                    {
-                        rect.transform.parent.gameObject.AddComponent<ToggleGroup>();
-                    }
+                    break;
+                case FigunityControlKind.Tab:
+                    AttachTabToggle(rect, graphic);
+                    report.toggles++;
                     break;
                 case FigunityControlKind.Toggle:
-                    AttachToggle(rect, graphic);
+                    AttachToggle(node, rect, graphic, options, report);
                     report.toggles++;
                     break;
                 case FigunityControlKind.Input:
-                    AttachInputField(rect, graphic, options);
+                    AttachInputField(node, rect, graphic, options);
                     report.inputs++;
                     break;
                 case FigunityControlKind.Dropdown:
@@ -542,6 +616,37 @@ namespace Figunity.Editor
             }
         }
 
+        private static bool IsTabGroupNode(FigunityNode node, FigunityControlKind kind)
+        {
+            if (node == null || kind != FigunityControlKind.Tab || node.children == null || node.children.Count <= 1)
+            {
+                return false;
+            }
+
+            var name = FigunityNameRules.Compact(node.name);
+            if (name.Contains("segmented") || name.Contains("tabbar") || name.Contains("tabs"))
+            {
+                return true;
+            }
+
+            var tabChildren = 0;
+            for (var i = 0; i < node.children.Count; i++)
+            {
+                var childName = FigunityNameRules.Compact(node.children[i]?.name);
+                if (childName.Contains("tab"))
+                {
+                    tabChildren++;
+                }
+            }
+
+            return tabChildren > 1;
+        }
+
+        private static bool ControlOwnsChildren(FigunityControlKind kind)
+        {
+            return kind == FigunityControlKind.Input || kind == FigunityControlKind.Toggle;
+        }
+
         private static void AttachButton(RectTransform rect, Graphic graphic)
         {
             var button = rect.gameObject.GetComponent<Button>() ?? rect.gameObject.AddComponent<Button>();
@@ -549,33 +654,129 @@ namespace Figunity.Editor
             button.transition = Selectable.Transition.ColorTint;
         }
 
-        private static void AttachToggle(RectTransform rect, Graphic graphic)
+        private static void AttachTabToggle(RectTransform rect, Graphic graphic)
         {
             var toggle = rect.gameObject.GetComponent<Toggle>() ?? rect.gameObject.AddComponent<Toggle>();
             toggle.targetGraphic = EnsureRaycastGraphic(rect, graphic);
-            var checkmark = MakeRect("Checkmark", rect, new FigunityBounds(4f, 4f, 16f, 16f), new FigunityBounds(0f, 0f, 0f, 0f));
-            var image = checkmark.gameObject.AddComponent<Image>();
-            image.color = new Color32(90, 190, 118, 255);
-            image.raycastTarget = false;
-            toggle.graphic = image;
+            toggle.transition = Selectable.Transition.ColorTint;
+            var group = rect.transform.parent != null ? rect.transform.parent.GetComponent<ToggleGroup>() : null;
+            if (group == null && rect.transform.parent != null)
+            {
+                group = rect.transform.parent.gameObject.AddComponent<ToggleGroup>();
+            }
+
+            toggle.group = group;
+            toggle.SetIsOnWithoutNotify(rect.GetSiblingIndex() == 0);
         }
 
-        private static void AttachInputField(RectTransform rect, Graphic graphic, FigunityFrameOptions options)
+        private static void AttachToggle(FigunityNode node, RectTransform rect, Graphic graphic, FigunityFrameOptions options, FigunityBuildReport report)
+        {
+            var toggle = rect.gameObject.GetComponent<Toggle>() ?? rect.gameObject.AddComponent<Toggle>();
+            toggle.targetGraphic = EnsureRaycastGraphic(rect, graphic);
+            toggle.transition = Selectable.Transition.ColorTint;
+
+            var trackNode = FindChildByCompactName(node, "track");
+            var handleNode = FindChildByCompactName(node, "handle");
+            var labelNode = FindChildByCompactName(node, "label");
+
+            Graphic handleGraphic = null;
+            RectTransform handleRect = null;
+            if (trackNode != null)
+            {
+                var trackRect = MakeRect("Track", rect, trackNode.bounds, node.bounds);
+                AttachMetadata(trackNode, trackRect);
+                var trackGraphic = AttachVisual(trackNode, trackRect, options);
+                EnsureRaycastGraphic(trackRect, trackGraphic);
+                report.graphics++;
+            }
+
+            if (handleNode != null)
+            {
+                handleRect = MakeRect("Handle", rect, handleNode.bounds, node.bounds);
+                AttachMetadata(handleNode, handleRect);
+                handleGraphic = AttachVisual(handleNode, handleRect, options);
+                if (handleGraphic != null)
+                {
+                    handleGraphic.raycastTarget = false;
+                    report.graphics++;
+                }
+            }
+
+            if (labelNode != null)
+            {
+                var labelRect = MakeRect("Label", rect, labelNode.bounds, node.bounds);
+                AttachMetadata(labelNode, labelRect);
+                AttachText(labelNode, labelRect, options);
+                report.texts++;
+            }
+
+            if (handleGraphic == null)
+            {
+                var checkmark = MakeRect("Checkmark", rect, new FigunityBounds(4f, 4f, 16f, 16f), new FigunityBounds(0f, 0f, 0f, 0f));
+                var image = checkmark.gameObject.AddComponent<Image>();
+                image.color = new Color32(90, 190, 118, 255);
+                image.raycastTarget = false;
+                handleGraphic = image;
+            }
+
+            toggle.SetIsOnWithoutNotify(IsToggleOn(trackNode, handleNode));
+            if (trackNode != null && handleNode != null && handleRect != null)
+            {
+                var switchMotion = rect.gameObject.GetComponent<FigunityToggleSwitch>() ?? rect.gameObject.AddComponent<FigunityToggleSwitch>();
+                var trackX = trackNode.bounds.x - node.bounds.x;
+                var handleY = handleRect.anchoredPosition.y;
+                var offPosition = new Vector2(trackX, handleY);
+                var onPosition = new Vector2(trackX + Mathf.Max(0f, trackNode.bounds.width - handleRect.sizeDelta.x), handleY);
+                switchMotion.Configure(toggle, handleRect, offPosition, onPosition);
+                toggle.graphic = null;
+            }
+            else
+            {
+                toggle.graphic = handleGraphic;
+            }
+        }
+
+        private static bool IsToggleOn(FigunityNode trackNode, FigunityNode handleNode)
+        {
+            if (trackNode == null || handleNode == null || trackNode.bounds.width <= 0f)
+            {
+                return true;
+            }
+
+            var handleCenter = handleNode.bounds.x + handleNode.bounds.width * 0.5f;
+            return handleCenter >= trackNode.bounds.x + trackNode.bounds.width * 0.5f;
+        }
+
+        private static void AttachInputField(FigunityNode node, RectTransform rect, Graphic graphic, FigunityFrameOptions options)
         {
             var input = rect.gameObject.GetComponent<TMP_InputField>() ?? rect.gameObject.AddComponent<TMP_InputField>();
             input.targetGraphic = EnsureRaycastGraphic(rect, graphic);
-            var textRect = MakeRect("InputText", rect, new FigunityBounds(10f, 6f, Mathf.Max(1f, rect.sizeDelta.x - 20f), Mathf.Max(1f, rect.sizeDelta.y - 12f)), new FigunityBounds(0f, 0f, 0f, 0f));
-            var label = textRect.gameObject.AddComponent<TextMeshProUGUI>();
-            label.text = string.Empty;
-            label.fontSize = Mathf.Max(12f, rect.sizeDelta.y * 0.45f);
-            label.color = Color.white;
-            var font = ResolveTextFont(null, options.settings);
-            if (font != null)
+            input.transition = Selectable.Transition.ColorTint;
+
+            var paddingX = Mathf.Min(14f, Mathf.Max(6f, rect.sizeDelta.x * 0.05f));
+            var paddingY = Mathf.Min(10f, Mathf.Max(4f, rect.sizeDelta.y * 0.18f));
+            var area = MakeRect("Text Area", rect, new FigunityBounds(paddingX, paddingY, Mathf.Max(1f, rect.sizeDelta.x - paddingX * 2f), Mathf.Max(1f, rect.sizeDelta.y - paddingY * 2f)), new FigunityBounds(0f, 0f, 0f, 0f));
+            area.gameObject.AddComponent<RectMask2D>();
+
+            var placeholderNode = FindChildByCompactName(node, "placeholder");
+            var placeholderRect = MakeRect("Placeholder", area, new FigunityBounds(0f, 0f, area.sizeDelta.x, area.sizeDelta.y), new FigunityBounds(0f, 0f, 0f, 0f));
+            var placeholder = placeholderRect.gameObject.AddComponent<TextMeshProUGUI>();
+            var placeholderColor = placeholderNode != null ? FigunityPaintRules.TextColor(placeholderNode) : new Color(1f, 1f, 1f, 0.5f);
+            placeholderColor.a = Mathf.Min(placeholderColor.a, 0.55f);
+            ConfigureTextLabel(placeholder, placeholderNode != null ? placeholderNode.text : null, placeholderColor, options);
+            if (string.IsNullOrEmpty(placeholder.text))
             {
-                label.font = font;
+                placeholder.text = "Placeholder";
             }
 
-            input.textComponent = label;
+            var textRect = MakeRect("Text", area, new FigunityBounds(0f, 0f, area.sizeDelta.x, area.sizeDelta.y), new FigunityBounds(0f, 0f, 0f, 0f));
+            var text = textRect.gameObject.AddComponent<TextMeshProUGUI>();
+            ConfigureTextLabel(text, placeholderNode != null ? placeholderNode.text : null, Color.white, options);
+            text.text = string.Empty;
+
+            input.textViewport = area;
+            input.placeholder = placeholder;
+            input.textComponent = text;
         }
 
         private static void AttachDropdown(RectTransform rect, Graphic graphic)
@@ -628,6 +829,36 @@ namespace Figunity.Editor
             metadata.ControlHint = frameNode.controlHint;
             metadata.IsMask = frameNode.isMask;
             metadata.IsRepeated = !string.IsNullOrWhiteSpace(frameNode.repeatKey);
+        }
+
+        private static FigunityNode FindChildByCompactName(FigunityNode node, string token)
+        {
+            if (node?.children == null || string.IsNullOrWhiteSpace(token))
+            {
+                return null;
+            }
+
+            var compactToken = FigunityNameRules.Compact(token);
+            for (var i = 0; i < node.children.Count; i++)
+            {
+                var child = node.children[i];
+                if (child == null)
+                {
+                    continue;
+                }
+
+                if (FigunityNameRules.Compact(child.name).Contains(compactToken))
+                {
+                    return child;
+                }
+            }
+
+            return null;
+        }
+
+        private static T EnsureComponent<T>(GameObject gameObject) where T : Component
+        {
+            return gameObject.GetComponent<T>() ?? gameObject.AddComponent<T>();
         }
 
         private static RectTransform MakeRect(string name, Transform parent, FigunityBounds nodeBounds, FigunityBounds parentBounds)

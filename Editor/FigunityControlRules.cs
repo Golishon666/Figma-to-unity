@@ -20,6 +20,7 @@ namespace Figunity.Editor
         public static FigunityControlKind Resolve(FigunityNode node)
         {
             var hint = FigunityNameRules.Compact(node != null ? node.controlHint : string.Empty);
+            var name = FigunityNameRules.Compact(node != null ? node.name : string.Empty);
             if (!string.IsNullOrEmpty(hint))
             {
                 if (hint.Contains("passiveslider")) return FigunityControlKind.PassiveSlider;
@@ -29,10 +30,10 @@ namespace Figunity.Editor
                 if (hint.Contains("input")) return FigunityControlKind.Input;
                 if (hint.Contains("dropdown")) return FigunityControlKind.Dropdown;
                 if (hint.Contains("tab")) return FigunityControlKind.Tab;
+                if (hint.Contains("button") && name.Contains("tab")) return FigunityControlKind.Tab;
                 if (hint.Contains("button")) return FigunityControlKind.Button;
             }
 
-            var name = FigunityNameRules.Compact(node != null ? node.name : string.Empty);
             if (name.Contains("scrollview") || name.Contains("scrollrect") || name.StartsWith("scroll", StringComparison.Ordinal))
             {
                 return FigunityControlKind.Scroll;
@@ -53,7 +54,7 @@ namespace Figunity.Editor
                 return FigunityControlKind.Dropdown;
             }
 
-            if (name.StartsWith("tab", StringComparison.Ordinal) || name.Contains("segmented"))
+            if (name.StartsWith("tab", StringComparison.Ordinal) || name.Contains("segmented") || name.Contains("tab"))
             {
                 return FigunityControlKind.Tab;
             }
