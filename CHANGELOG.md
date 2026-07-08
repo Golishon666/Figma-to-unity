@@ -3,6 +3,7 @@
 ## 0.1.0
 
 - Initial standalone FIGUNITY Unity Package Manager package.
+- Added Figma constraint mapping to Unity anchors with diagnostics and imported-node metadata.
 - Added editable stroke support for solid rectangle, rounded-rectangle, and ellipse primitives.
 - Added `figunity:*` manual overrides, importer decision reasons, and recognition highlights in diagnostics.
 - Added a visual Importer Panel with Figma panel discovery, highlighted selection, Import Selected, Import All, and an embedded Settings tab.

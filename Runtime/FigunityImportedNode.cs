@@ -15,6 +15,8 @@ namespace Figunity.Runtime
         [SerializeField] private string controlHint;
         [SerializeField] private string overrideHint;
         [SerializeField] private string decisionReason;
+        [SerializeField] private string horizontalConstraint;
+        [SerializeField] private string verticalConstraint;
         [SerializeField] private bool mask;
         [SerializeField] private bool repeated;
 
@@ -76,6 +78,18 @@ namespace Figunity.Runtime
         {
             get => decisionReason;
             set => decisionReason = value;
+        }
+
+        public string HorizontalConstraint
+        {
+            get => horizontalConstraint;
+            set => horizontalConstraint = value;
+        }
+
+        public string VerticalConstraint
+        {
+            get => verticalConstraint;
+            set => verticalConstraint = value;
         }
 
         public bool IsMask

@@ -78,6 +78,7 @@ FIGUNITY converts:
 - `clipsContent` to `RectMask2D`
 - Figma mask nodes to `Mask`
 - Figma auto-layout metadata to `HorizontalLayoutGroup` or `VerticalLayoutGroup`
+- Figma constraints to Unity `RectTransform` anchors where possible
 - scroll hints to `ScrollRect`
 - toggle, input, dropdown, and tab hints to their closest UGUI/TMP controls
 

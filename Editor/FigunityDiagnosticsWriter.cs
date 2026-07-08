@@ -56,6 +56,7 @@ namespace Figunity.Editor
                 report.AppendLine("- Scroll views: " + counters.scrollViews);
                 report.AppendLine("- Repeated groups: " + counters.repeatedGroups);
                 report.AppendLine("- Manual overrides: " + counters.manualOverrides);
+                report.AppendLine("- Responsive constraints: " + counters.responsiveConstraints);
                 if (!string.IsNullOrWhiteSpace(frame.screenshotPath))
                 {
                     report.AppendLine("- Figma screenshot: `" + frame.screenshotPath + "`");
@@ -96,6 +97,7 @@ namespace Figunity.Editor
             report.AppendLine("- Scroll views: " + totals.scrollViews);
             report.AppendLine("- Repeated groups: " + totals.repeatedGroups);
             report.AppendLine("- Manual overrides: " + totals.manualOverrides);
+            report.AppendLine("- Responsive constraints: " + totals.responsiveConstraints);
             report.AppendLine();
             report.AppendLine("## Visual Diff");
             report.AppendLine();
@@ -124,6 +126,7 @@ namespace Figunity.Editor
             if (node.isMask || node.clipsContent) counters.masks++;
             if (node.autoLayout != null && node.autoLayout.Enabled) counters.layoutGroups++;
             if (!string.IsNullOrWhiteSpace(node.overrideHint)) counters.manualOverrides++;
+            if (HasResponsiveConstraint(node)) counters.responsiveConstraints++;
             switch (FigunityControlRules.Resolve(node))
             {
                 case FigunityControlKind.Button:
@@ -177,13 +180,15 @@ namespace Figunity.Editor
 
             var hasOverride = !string.IsNullOrWhiteSpace(node.overrideHint);
             var hasControl = !string.IsNullOrWhiteSpace(node.controlHint);
+            var hasConstraint = HasResponsiveConstraint(node);
             var isSpecialRender =
                 string.Equals(node.renderMode, "composite", System.StringComparison.OrdinalIgnoreCase);
-            if (hasOverride || hasControl || isSpecialRender || node.isMask)
+            if (hasOverride || hasControl || hasConstraint || isSpecialRender || node.isMask)
             {
                 var pieces = new List<string>();
                 if (hasOverride) pieces.Add("override=" + node.overrideHint);
                 if (hasControl) pieces.Add("control=" + node.controlHint);
+                if (hasConstraint) pieces.Add("constraints=" + node.constraints.horizontal + "/" + node.constraints.vertical);
                 if (!string.IsNullOrWhiteSpace(node.renderMode)) pieces.Add("render=" + node.renderMode);
                 if (!string.IsNullOrWhiteSpace(node.decisionReason)) pieces.Add("reason=" + node.decisionReason);
                 if (node.isMask) pieces.Add("mask=true");
@@ -204,6 +209,28 @@ namespace Figunity.Editor
             }
         }
 
+        private static bool HasResponsiveConstraint(FigunityNode node)
+        {
+            if (node == null || node.constraints == null)
+            {
+                return false;
+            }
+
+            return IsResponsiveConstraint(node.constraints.horizontal) ||
+                   IsResponsiveConstraint(node.constraints.vertical);
+        }
+
+        private static bool IsResponsiveConstraint(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return false;
+            }
+
+            var normalized = value.Trim().Replace("-", "_").Replace(" ", "_").ToUpperInvariant();
+            return normalized != "MIN" && normalized != "LEFT" && normalized != "TOP";
+        }
+
         private sealed class Counters
         {
             public int masks;
@@ -215,6 +242,7 @@ namespace Figunity.Editor
             public int scrollViews;
             public int repeatedGroups;
             public int manualOverrides;
+            public int responsiveConstraints;
 
             public void Add(Counters other)
             {
@@ -227,6 +255,7 @@ namespace Figunity.Editor
                 scrollViews += other.scrollViews;
                 repeatedGroups += other.repeatedGroups;
                 manualOverrides += other.manualOverrides;
+                responsiveConstraints += other.responsiveConstraints;
             }
         }
     }

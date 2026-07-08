@@ -178,6 +178,11 @@ function outline(node, hex = "#7BC4FF", weight = 1, opacity = 1) {
   return node;
 }
 
+function constrain(node, horizontal = "MIN", vertical = "MIN") {
+  node.constraints = { horizontal, vertical };
+  return node;
+}
+
 function text(parent, name, value, x, y, w, h, size = 20, fill = "#F4F1E8", bold = false) {
   const node = figma.createText();
   node.name = name;
@@ -356,6 +361,18 @@ masks.appendChild(clip);
 for (let i = 0; i < 8; i++) {
   text(clip, "Log Row " + i, "Clipped row " + (i + 1), 18, 18 + i * 42, 260, 24, 16);
 }
+const constrained = figma.createFrame();
+constrained.name = "Panel - Responsive Constraints";
+constrained.x = 760;
+constrained.y = 98;
+constrained.resize(150, 300);
+constrained.fills = [solid("#202832")];
+constrained.cornerRadius = 12;
+constrain(outline(constrained, "#7BC4FF", 2, 0.5), "MAX", "STRETCH");
+masks.appendChild(constrained);
+text(constrained, "Title", "Constraints", 16, 18, 118, 24, 18, "#F4F1E8", true);
+text(constrained, "Caption", "Right + stretch", 16, 48, 118, 42, 14, "#A7B1BF");
+constrain(rect(constrained, "Scale Fill", 16, 238, 118, 18, "#71B978", 9), "SCALE", "MAX");
 
 const list = frame("FIGUNITY Test Scroll Menu", 0, 620, 960, 620);
 text(list, "Title", "SCROLL + REPEATED CARDS", 32, 28, 620, 38, 28, "#F4F1E8", true);

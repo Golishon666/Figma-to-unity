@@ -10,7 +10,7 @@ It is intentionally small:
 - it keeps text as `TextMeshProUGUI`;
 - it converts obvious progress/capacity/slider groups into passive `UnityEngine.UI.Slider` components;
 - it uses editable graphics for simple solid/stroked panels and `RawImage` for exported raster/vector visuals.
-- it creates masks, layout groups, scroll views, toggles, inputs, dropdowns, tabs, active sliders, diagnostics, and repeated-item prefab candidates when the Figma structure exposes those hints.
+- it creates masks, layout groups, responsive anchors, scroll views, toggles, inputs, dropdowns, tabs, active sliders, diagnostics, and repeated-item prefab candidates when the Figma structure exposes those hints.
 
 ## Figma MCP Server
 
@@ -85,7 +85,7 @@ Open `Tools/FIGUNITY/Importer Panel` for a visual workflow:
 
 The panel writes a temporary frame config under the configured import folder, exports through `figma-console-mcp`, then rebuilds prefabs with the same importer settings as the menu workflow.
 
-The `Settings` tab edits the same `Assets/FIGUNITY/FigunitySettings.asset` used by the Unity project settings provider: port, expected Figma file name, raster scale, import/prefab paths, masks, auto-layout, repeated prefab extraction, diagnostics, manual-child preservation, rounded/stroked primitive graphics, and TMP font mappings.
+The `Settings` tab edits the same `Assets/FIGUNITY/FigunitySettings.asset` used by the Unity project settings provider: port, expected Figma file name, raster scale, import/prefab paths, masks, auto-layout, responsive anchors, repeated prefab extraction, diagnostics, manual-child preservation, rounded/stroked primitive graphics, and TMP font mappings.
 
 ## Manual Overrides
 

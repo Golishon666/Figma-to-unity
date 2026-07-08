@@ -83,7 +83,7 @@ namespace Figunity.Editor
                 return;
             }
 
-            var rect = MakeRect(FigunityNameRules.ToObjectName(node.name), parent, node.bounds, parentBounds);
+            var rect = MakeRect(FigunityNameRules.ToObjectName(node.name), parent, node.bounds, parentBounds, node.constraints);
             AttachMetadata(node, rect);
             AttachLayoutElement(node, rect);
             var graphic = AttachVisual(node, rect, options);
@@ -124,7 +124,7 @@ namespace Figunity.Editor
         private static void ComposeScrollView(FigunityNode node, RectTransform parent, FigunityBounds parentBounds, FigunityFrameOptions options, FigunityBuildReport report)
         {
             var visibleBounds = VisibleBoundsWithinParent(node.bounds, parentBounds);
-            var root = MakeRect(FigunityNameRules.ToObjectName(node.name), parent, visibleBounds, parentBounds);
+            var root = MakeRect(FigunityNameRules.ToObjectName(node.name), parent, visibleBounds, parentBounds, node.constraints);
             AttachMetadata(node, root);
             AttachLayoutElement(node, root);
             var graphic = AttachVisual(node, root, options);
@@ -222,7 +222,7 @@ namespace Figunity.Editor
 
         private static RectTransform ComposeMaskHost(FigunityNode maskNode, RectTransform parent, FigunityBounds parentBounds, FigunityFrameOptions options, FigunityBuildReport report)
         {
-            var rect = MakeRect(FigunityNameRules.ToObjectName(maskNode.name), parent, maskNode.bounds, parentBounds);
+            var rect = MakeRect(FigunityNameRules.ToObjectName(maskNode.name), parent, maskNode.bounds, parentBounds, maskNode.constraints);
             AttachMetadata(maskNode, rect);
             AttachLayoutElement(maskNode, rect);
             var graphic = AttachMaskStencilGraphic(maskNode, rect, options);
@@ -237,7 +237,7 @@ namespace Figunity.Editor
         private static void ComposeMeter(FigunityMeterShape meter, RectTransform parent, FigunityBounds parentBounds, FigunityFrameOptions options, FigunityBuildReport report)
         {
             var node = meter.container;
-            var rect = MakeRect(FigunityNameRules.ToObjectName(node.name), parent, node.bounds, parentBounds);
+            var rect = MakeRect(FigunityNameRules.ToObjectName(node.name), parent, node.bounds, parentBounds, node.constraints);
             AttachMetadata(node, rect);
             AttachLayoutElement(node, rect);
 
@@ -989,6 +989,8 @@ namespace Figunity.Editor
             metadata.ControlHint = frameNode.controlHint;
             metadata.OverrideHint = frameNode.overrideHint;
             metadata.DecisionReason = frameNode.decisionReason;
+            metadata.HorizontalConstraint = frameNode.constraints != null ? frameNode.constraints.horizontal : string.Empty;
+            metadata.VerticalConstraint = frameNode.constraints != null ? frameNode.constraints.vertical : string.Empty;
             metadata.IsMask = frameNode.isMask;
             metadata.IsRepeated = !string.IsNullOrWhiteSpace(frameNode.repeatKey);
         }
@@ -1023,19 +1025,174 @@ namespace Figunity.Editor
             return gameObject.GetComponent<T>() ?? gameObject.AddComponent<T>();
         }
 
-        private static RectTransform MakeRect(string name, Transform parent, FigunityBounds nodeBounds, FigunityBounds parentBounds)
+        private static RectTransform MakeRect(string name, Transform parent, FigunityBounds nodeBounds, FigunityBounds parentBounds, FigunityConstraints constraints = null)
         {
             var go = new GameObject(UniqueName(parent, name), typeof(RectTransform));
             var rect = go.GetComponent<RectTransform>();
             rect.SetParent(parent, false);
-            rect.anchorMin = new Vector2(0f, 1f);
-            rect.anchorMax = new Vector2(0f, 1f);
-            rect.pivot = new Vector2(0f, 1f);
-            rect.anchoredPosition = new Vector2(nodeBounds.x - parentBounds.x, -(nodeBounds.y - parentBounds.y));
-            rect.sizeDelta = new Vector2(Mathf.Max(0f, nodeBounds.width), Mathf.Max(0f, nodeBounds.height));
             rect.localRotation = Quaternion.identity;
             rect.localScale = Vector3.one;
+            ApplyFigmaConstraints(rect, nodeBounds, parentBounds, constraints);
             return rect;
+        }
+
+        private static void ApplyFigmaConstraints(RectTransform rect, FigunityBounds nodeBounds, FigunityBounds parentBounds, FigunityConstraints constraints)
+        {
+            var left = nodeBounds.x - parentBounds.x;
+            var top = nodeBounds.y - parentBounds.y;
+            var width = Mathf.Max(0f, nodeBounds.width);
+            var height = Mathf.Max(0f, nodeBounds.height);
+            var parentWidth = Mathf.Max(0f, parentBounds.width);
+            var parentHeight = Mathf.Max(0f, parentBounds.height);
+            var right = parentWidth - left - width;
+            var bottom = parentHeight - top - height;
+
+            var horizontal = NormalizeConstraint(constraints != null ? constraints.horizontal : null);
+            var vertical = NormalizeConstraint(constraints != null ? constraints.vertical : null);
+            var stretchX = horizontal == "STRETCH";
+            var stretchY = vertical == "STRETCH";
+            var scaleX = horizontal == "SCALE" && parentWidth > 0.01f;
+            var scaleY = vertical == "SCALE" && parentHeight > 0.01f;
+
+            var anchorMin = new Vector2(0f, 1f);
+            var anchorMax = new Vector2(0f, 1f);
+            var pivot = new Vector2(0f, 1f);
+            var anchoredPosition = new Vector2(left, -top);
+            var sizeDelta = new Vector2(width, height);
+
+            if (scaleX)
+            {
+                anchorMin.x = Mathf.Clamp01(left / parentWidth);
+                anchorMax.x = Mathf.Clamp01((left + width) / parentWidth);
+                pivot.x = 0.5f;
+                anchoredPosition.x = 0f;
+                sizeDelta.x = 0f;
+            }
+            else if (stretchX)
+            {
+                anchorMin.x = 0f;
+                anchorMax.x = 1f;
+                pivot.x = 0.5f;
+                anchoredPosition.x = 0f;
+                sizeDelta.x = -left - right;
+            }
+            else if (horizontal == "MAX")
+            {
+                anchorMin.x = 1f;
+                anchorMax.x = 1f;
+                pivot.x = 1f;
+                anchoredPosition.x = -right;
+            }
+            else if (horizontal == "CENTER")
+            {
+                anchorMin.x = 0.5f;
+                anchorMax.x = 0.5f;
+                pivot.x = 0.5f;
+                anchoredPosition.x = left + width * 0.5f - parentWidth * 0.5f;
+            }
+
+            if (scaleY)
+            {
+                anchorMin.y = Mathf.Clamp01(1f - (top + height) / parentHeight);
+                anchorMax.y = Mathf.Clamp01(1f - top / parentHeight);
+                pivot.y = 0.5f;
+                anchoredPosition.y = 0f;
+                sizeDelta.y = 0f;
+            }
+            else if (stretchY)
+            {
+                anchorMin.y = 0f;
+                anchorMax.y = 1f;
+                pivot.y = 0.5f;
+                anchoredPosition.y = 0f;
+                sizeDelta.y = -top - bottom;
+            }
+            else if (vertical == "MAX")
+            {
+                anchorMin.y = 0f;
+                anchorMax.y = 0f;
+                pivot.y = 0f;
+                anchoredPosition.y = bottom;
+            }
+            else if (vertical == "CENTER")
+            {
+                anchorMin.y = 0.5f;
+                anchorMax.y = 0.5f;
+                pivot.y = 0.5f;
+                anchoredPosition.y = parentHeight * 0.5f - top - height * 0.5f;
+            }
+
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.pivot = pivot;
+            rect.sizeDelta = sizeDelta;
+            rect.anchoredPosition = anchoredPosition;
+
+            if (stretchX)
+            {
+                var min = rect.offsetMin;
+                min.x = left;
+                rect.offsetMin = min;
+                var max = rect.offsetMax;
+                max.x = -right;
+                rect.offsetMax = max;
+            }
+
+            if (stretchY)
+            {
+                var min = rect.offsetMin;
+                min.y = bottom;
+                rect.offsetMin = min;
+                var max = rect.offsetMax;
+                max.y = -top;
+                rect.offsetMax = max;
+            }
+
+            if (scaleX)
+            {
+                var min = rect.offsetMin;
+                min.x = 0f;
+                rect.offsetMin = min;
+                var max = rect.offsetMax;
+                max.x = 0f;
+                rect.offsetMax = max;
+            }
+
+            if (scaleY)
+            {
+                var min = rect.offsetMin;
+                min.y = 0f;
+                rect.offsetMin = min;
+                var max = rect.offsetMax;
+                max.y = 0f;
+                rect.offsetMax = max;
+            }
+        }
+
+        private static string NormalizeConstraint(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return "MIN";
+            }
+
+            var normalized = value.Trim().Replace("-", "_").Replace(" ", "_").ToUpperInvariant();
+            if (normalized == "LEFT" || normalized == "TOP")
+            {
+                return "MIN";
+            }
+
+            if (normalized == "RIGHT" || normalized == "BOTTOM")
+            {
+                return "MAX";
+            }
+
+            if (normalized == "LEFT_RIGHT" || normalized == "TOP_BOTTOM")
+            {
+                return "STRETCH";
+            }
+
+            return normalized;
         }
 
         private static string UniqueName(Transform parent, string desired)
