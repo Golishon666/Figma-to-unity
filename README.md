@@ -10,6 +10,7 @@ It is intentionally small:
 - it keeps text as `TextMeshProUGUI`;
 - it converts obvious progress/capacity/slider groups into passive `UnityEngine.UI.Slider` components;
 - it uses `Image` for simple solid panels and `RawImage` for exported raster/vector visuals.
+- it creates masks, layout groups, scroll views, toggles, inputs, dropdowns, tabs, active sliders, diagnostics, and repeated-item prefab candidates when the Figma structure exposes those hints.
 
 ## Figma MCP Server
 
@@ -56,6 +57,8 @@ Use the Unity menu:
 - `Tools/FIGUNITY/Export From Figma via figma-console-mcp`
 - `Tools/FIGUNITY/Rebuild Prefabs From Payload`
 - `Tools/FIGUNITY/Export And Rebuild`
+- `Tools/FIGUNITY/Tests/Create Test Menus In Figma`
+- `Tools/FIGUNITY/Tests/Create Export Rebuild And Build Test Scene`
 
 Default paths:
 
@@ -64,6 +67,9 @@ Default paths:
 - screenshots: `Assets/FIGUNITY/Imports/Screenshots`
 - element PNGs: `Assets/FIGUNITY/Imports/ElementAssets`
 - generated prefabs: `Assets/FIGUNITY/Prefabs`
+- repeated item prefabs: `Assets/FIGUNITY/Prefabs/Repeated`
+- diagnostics: `Assets/FIGUNITY/Imports/diagnostics.md`
+- test scene: `Assets/FIGUNITY/TestScene/FigunityTestMenus.unity`
 
 If `Assets/FIGUNITY/figunity.frames.json` exists, FIGUNITY exports those frames by name or node id. If the config is missing, it exports the current Figma selection and writes it as `selected-node`.
 
@@ -94,6 +100,23 @@ Supported frame fields:
 - `selection`: if `true`, export the first currently selected Figma node.
 
 The package includes a neutral sample under `Samples~/Frame Config/figunity.frames.json`.
+It also includes `Samples~/Frame Config/figunity-test-menus.frames.json` for the generated test menus.
+
+## Test Menus
+
+Open a Figma file in Figma Desktop, run the Figma Console MCP Desktop Bridge plugin, then use:
+
+```text
+Tools/FIGUNITY/Tests/Create Export Rebuild And Build Test Scene
+```
+
+That menu creates three Figma frames named:
+
+- `FIGUNITY Test Main Menu`
+- `FIGUNITY Test Mask Menu`
+- `FIGUNITY Test Scroll Menu`
+
+Then it installs the test frame config, exports through `figma-console-mcp`, rebuilds prefabs, writes diagnostics, extracts repeated-card prefabs, and creates the Unity scene configured in `Project Settings > FIGUNITY`.
 
 ## Legal And Attribution Notes
 

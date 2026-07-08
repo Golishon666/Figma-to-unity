@@ -9,6 +9,7 @@ const port = String(args.port || process.env.FIGMA_WS_PORT || "9225");
 const outputTarget = args.out || process.env.FIGUNITY_OUT_DIR || "Assets/FIGUNITY/Imports";
 const frameConfigTarget = args.frames || process.env.FIGUNITY_FRAMES || "Assets/FIGUNITY/figunity.frames.json";
 const explicitExpectedFile = args.file || process.env.FIGUNITY_FILE_NAME || "";
+const rasterScale = Math.max(1, Math.min(Number(args.rasterScale || process.env.FIGUNITY_RASTER_SCALE || 2), 4));
 const { absolute: outDir, unity: unityOutDir } = resolveProjectAssetPath(outputTarget);
 const screenshotsDir = join(outDir, "Screenshots");
 const frameConfigPath = resolveMaybeProjectPath(frameConfigTarget);
@@ -219,6 +220,7 @@ function extractionProgram(request) {
 await figma.loadAllPagesAsync();
 
 const request = ${JSON.stringify(request)};
+const rasterScale = ${JSON.stringify(rasterScale)};
 let root = null;
 
 if (request.selection) {
@@ -289,6 +291,66 @@ function textShouldRasterize(node) {
   return false;
 }
 
+function compactName(value) {
+  return String(value || "").replace(/[^a-z0-9]+/gi, "").toLowerCase();
+}
+
+function inferControlHint(node) {
+  const name = compactName(node.name);
+  if (name.includes("scrollview") || name.includes("scrollrect") || name.startsWith("scroll")) return "scroll";
+  if (name.startsWith("toggle") || name.includes("checkbox") || name.includes("switch")) return "toggle";
+  if (name.startsWith("input") || name.includes("textfield") || name.includes("textinput")) return "input";
+  if (name.startsWith("dropdown") || name.includes("select")) return "dropdown";
+  if (name.startsWith("tab") || name.includes("segmented")) return "tab";
+  if (name.includes("slider")) return name.includes("passive") || name.includes("readonly") ? "passive-slider" : "slider";
+  if (name.includes("progress") || name.includes("capacitybar") || name.includes("meter")) return "passive-slider";
+  if (name.startsWith("button") || name.includes("button")) return "button";
+  return "";
+}
+
+function repeatKey(node) {
+  const key = compactName(node.name)
+    .replace(/\\d+$/g, "")
+    .replace(/(copy|instance|variant)$/g, "");
+  if (!key || key === "node" || key === "frame" || key === "group") return "";
+  return key;
+}
+
+function layoutPayload(node) {
+  return {
+    layoutMode: node.layoutMode || "NONE",
+    primaryAxisSizingMode: node.primaryAxisSizingMode || "",
+    counterAxisSizingMode: node.counterAxisSizingMode || "",
+    primaryAxisAlignItems: node.primaryAxisAlignItems || "",
+    counterAxisAlignItems: node.counterAxisAlignItems || "",
+    layoutWrap: node.layoutWrap || "",
+    itemSpacing: typeof node.itemSpacing === "number" ? node.itemSpacing : 0,
+    counterAxisSpacing: typeof node.counterAxisSpacing === "number" ? node.counterAxisSpacing : 0,
+    paddingLeft: typeof node.paddingLeft === "number" ? node.paddingLeft : 0,
+    paddingRight: typeof node.paddingRight === "number" ? node.paddingRight : 0,
+    paddingTop: typeof node.paddingTop === "number" ? node.paddingTop : 0,
+    paddingBottom: typeof node.paddingBottom === "number" ? node.paddingBottom : 0
+  };
+}
+
+function constraintsPayload(node) {
+  return node.constraints
+    ? { horizontal: node.constraints.horizontal || "", vertical: node.constraints.vertical || "" }
+    : null;
+}
+
+function componentPayload(node) {
+  if (node.type !== "INSTANCE" || !node.mainComponent) {
+    return { isInstance: false, componentKey: "", componentName: "" };
+  }
+
+  return {
+    isInstance: true,
+    componentKey: node.mainComponent.key || node.mainComponent.id || "",
+    componentName: node.mainComponent.name || ""
+  };
+}
+
 function localBounds(node) {
   const box = node.absoluteBoundingBox || { x: rootBounds.x, y: rootBounds.y, width: 0, height: 0 };
   return { x: box.x - rootBounds.x, y: box.y - rootBounds.y, width: box.width, height: box.height };
@@ -336,14 +398,21 @@ function traverse(node, parentId, depth, siblingIndex, path) {
     siblingIndex,
     path,
     renderMode: mode,
+    controlHint: inferControlHint(node),
     clipsContent: !!node.clipsContent,
+    isMask: !!node.isMask,
+    maskType: node.maskType || "",
     opacity: node.opacity == null ? 1 : node.opacity,
     blendMode: node.blendMode || "PASS_THROUGH",
     bounds: localBounds(node),
+    constraints: constraintsPayload(node),
+    autoLayout: layoutPayload(node),
     fills: visiblePaints(node.fills),
     strokes: visiblePaints(node.strokes),
     strokeWeight: typeof node.strokeWeight === "number" ? node.strokeWeight : 0,
     cornerRadius: typeof node.cornerRadius === "number" ? node.cornerRadius : 0,
+    ...componentPayload(node),
+    repeatKey: repeatKey(node),
     text: node.type === "TEXT" ? textPayload(node) : null,
     children: []
   };
@@ -375,9 +444,9 @@ async function rasterize(job, index) {
     cleanup = clone;
   }
 
-  const bytes = await target.exportAsync({ format: "PNG", constraint: { type: "SCALE", value: 2 } });
+  const bytes = await target.exportAsync({ format: "PNG", constraint: { type: "SCALE", value: rasterScale } });
   if (cleanup) cleanup.remove();
-  return { ...job, index, scale: 2, byteLength: bytes.length, base64: figma.base64Encode(bytes) };
+  return { ...job, index, scale: rasterScale, byteLength: bytes.length, base64: figma.base64Encode(bytes) };
 }
 
 const tree = traverse(root, null, 0, 0, root.name || root.type);
@@ -515,10 +584,7 @@ try {
   const document = {
     source: "figunity via figma-console-mcp",
     expectedFileName,
-    currentFileName:
-      status.currentFileName ||
-      status.transport?.websocket?.connectedFile?.fileName ||
-      "",
+    currentFileName: "",
     currentFileKey:
       status.currentFileKey ||
       status.transport?.websocket?.connectedFile?.fileKey ||

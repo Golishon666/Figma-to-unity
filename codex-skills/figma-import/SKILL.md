@@ -38,12 +38,16 @@ FIGUNITY package paths:
 - Unity menu: `Tools/FIGUNITY/Export From Figma via figma-console-mcp`
 - Unity menu: `Tools/FIGUNITY/Rebuild Prefabs From Payload`
 - Unity menu: `Tools/FIGUNITY/Export And Rebuild`
+- Test menu: `Tools/FIGUNITY/Tests/Create Test Menus In Figma`
+- Test menu: `Tools/FIGUNITY/Tests/Create Export Rebuild And Build Test Scene`
 - frame config: `Assets/FIGUNITY/figunity.frames.json`
 - payload/assets: `Assets/FIGUNITY/Imports/`
 - generated prefabs: `Assets/FIGUNITY/Prefabs/`
+- diagnostics: `Assets/FIGUNITY/Imports/diagnostics.md`
+- test scene: `Assets/FIGUNITY/TestScene/FigunityTestMenus.unity`
 - sample config in the package: `Samples~/Frame Config/figunity.frames.json`
 
-FIGUNITY handles the core conversion rules: `TEXT` to `TextMeshProUGUI`, simple solid panels to `Image`, complex/vector/image/background nodes to exported PNG `RawImage`, `Button - ...` frames to `Button`, and Figma meter groups with `Track`/`Fill`/`Handle` to passive `UnityEngine.UI.Slider`.
+FIGUNITY handles the core conversion rules: `TEXT` to `TextMeshProUGUI`, simple solid panels to `Image` or `FigunityRoundedRectGraphic`, complex/vector/image/background nodes to exported PNG `RawImage`, `Button - ...` frames to `Button`, Figma meter groups with `Track`/`Fill`/`Handle` to passive or active `UnityEngine.UI.Slider`, `clipsContent` and mask nodes to Unity masks, Figma auto-layout hints to layout groups, and common toggle/input/dropdown/scroll/tab controls to UGUI/TMP components.
 
 When extending a project-specific Figma import:
 1. Add frames to `Assets/FIGUNITY/figunity.frames.json` or copy the package sample config into `Assets/FIGUNITY/`.

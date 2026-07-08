@@ -1,14 +1,10 @@
 {
-  "name": "Figunity.Editor",
-  "rootNamespace": "Figunity.Editor",
+  "name": "Figunity.Runtime",
+  "rootNamespace": "Figunity.Runtime",
   "references": [
-    "Figunity.Runtime",
-    "Unity.TextMeshPro",
     "UnityEngine.UI"
   ],
-  "includePlatforms": [
-    "Editor"
-  ],
+  "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
   "overrideReferences": false,

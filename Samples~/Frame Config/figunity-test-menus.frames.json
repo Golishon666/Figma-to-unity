@@ -1,0 +1,20 @@
+{
+  "expectedFileName": "",
+  "frames": [
+    {
+      "key": "testMainMenu",
+      "slug": "test-main-menu",
+      "name": "FIGUNITY Test Main Menu"
+    },
+    {
+      "key": "testMaskMenu",
+      "slug": "test-mask-menu",
+      "name": "FIGUNITY Test Mask Menu"
+    },
+    {
+      "key": "testScrollMenu",
+      "slug": "test-scroll-menu",
+      "name": "FIGUNITY Test Scroll Menu"
+    }
+  ]
+}

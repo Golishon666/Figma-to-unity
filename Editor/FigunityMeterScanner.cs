@@ -63,7 +63,8 @@ namespace Figunity.Editor
                 track = track,
                 fill = fill,
                 handle = handle,
-                normalizedValue = Mathf.Clamp01(fill.bounds.width / track.bounds.width)
+                normalizedValue = Mathf.Clamp01(fill.bounds.width / track.bounds.width),
+                interactable = FigunityControlRules.Resolve(node) == FigunityControlKind.Slider
             };
 
             return true;
@@ -77,5 +78,6 @@ namespace Figunity.Editor
         public FigunityNode fill;
         public FigunityNode handle;
         public float normalizedValue;
+        public bool interactable;
     }
 }

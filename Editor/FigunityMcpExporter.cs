@@ -14,25 +14,16 @@ namespace Figunity.Editor
         public const string ImportFolder = "Assets/FIGUNITY/Imports";
         public const string FrameConfigPath = "Assets/FIGUNITY/figunity.frames.json";
         private const int TimeoutMilliseconds = 420000;
-        private const string PortPrefsKey = "Figunity.FigmaWsPort";
-        private const string ExpectedFilePrefsKey = "Figunity.ExpectedFileName";
-
-        public static string FigmaPort
-        {
-            get => EditorPrefs.GetString(PortPrefsKey, "9225");
-            set => EditorPrefs.SetString(PortPrefsKey, string.IsNullOrWhiteSpace(value) ? "9225" : value.Trim());
-        }
-
-        public static string ExpectedFileName
-        {
-            get => EditorPrefs.GetString(ExpectedFilePrefsKey, string.Empty);
-            set => EditorPrefs.SetString(ExpectedFilePrefsKey, value ?? string.Empty);
-        }
 
         public static void Export()
         {
-            EnsureFolder("Assets", "FIGUNITY");
-            EnsureFolder("Assets/FIGUNITY", "Imports");
+            Export(FigunitySettings.LoadOrCreate());
+        }
+
+        public static void Export(FigunitySettingsAsset settings)
+        {
+            if (settings == null) throw new ArgumentNullException(nameof(settings));
+            FigunitySettings.EnsureUnityFolder(settings.importFolder);
 
             var projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
             var workerPath = Path.Combine(ResolvePackageRoot(), "Tools", "figunity-export.mjs");
@@ -55,12 +46,13 @@ namespace Figunity.Editor
                 StandardErrorEncoding = Encoding.UTF8
             };
 
-            startInfo.EnvironmentVariables["FIGMA_WS_PORT"] = FigmaPort;
-            startInfo.EnvironmentVariables["FIGUNITY_OUT_DIR"] = ImportFolder;
-            startInfo.EnvironmentVariables["FIGUNITY_FRAMES"] = FrameConfigPath;
-            if (!string.IsNullOrWhiteSpace(ExpectedFileName))
+            startInfo.EnvironmentVariables["FIGMA_WS_PORT"] = string.IsNullOrWhiteSpace(settings.figmaWsPort) ? "9225" : settings.figmaWsPort.Trim();
+            startInfo.EnvironmentVariables["FIGUNITY_OUT_DIR"] = settings.importFolder;
+            startInfo.EnvironmentVariables["FIGUNITY_FRAMES"] = settings.frameConfigPath;
+            startInfo.EnvironmentVariables["FIGUNITY_RASTER_SCALE"] = Mathf.Clamp(settings.rasterScale, 1, 4).ToString();
+            if (!string.IsNullOrWhiteSpace(settings.expectedFileName))
             {
-                startInfo.EnvironmentVariables["FIGUNITY_FILE_NAME"] = ExpectedFileName;
+                startInfo.EnvironmentVariables["FIGUNITY_FILE_NAME"] = settings.expectedFileName;
             }
 
             using (var process = new Process { StartInfo = startInfo })
@@ -99,7 +91,7 @@ namespace Figunity.Editor
                     throw new InvalidOperationException("FIGUNITY export failed.\nSTDOUT:\n" + stdout + "\nSTDERR:\n" + stderr);
                 }
 
-                Debug.Log("FIGUNITY export completed:\n" + stdout);
+                UnityEngine.Debug.Log("FIGUNITY export completed:\n" + stdout);
             }
 
             AssetDatabase.Refresh();
@@ -107,7 +99,7 @@ namespace Figunity.Editor
 
         private static string ResolvePackageRoot()
         {
-            var package = PackageInfo.FindForAssembly(Assembly.GetExecutingAssembly());
+            var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(Assembly.GetExecutingAssembly());
             if (package != null && !string.IsNullOrWhiteSpace(package.resolvedPath))
             {
                 return package.resolvedPath;
@@ -133,15 +125,6 @@ namespace Figunity.Editor
         private static string Quote(string value)
         {
             return "\"" + value.Replace("\"", "\\\"") + "\"";
-        }
-
-        private static void EnsureFolder(string parent, string child)
-        {
-            var path = parent + "/" + child;
-            if (!AssetDatabase.IsValidFolder(path))
-            {
-                AssetDatabase.CreateFolder(parent, child);
-            }
         }
     }
 }

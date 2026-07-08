@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using UnityEngine;
 
 namespace Figunity.Editor
@@ -17,7 +18,7 @@ namespace Figunity.Editor
 
         public static FigunityDocument Decode(string json)
         {
-            return JsonUtility.FromJson<FigunityDocument>(json);
+            return JsonConvert.DeserializeObject<FigunityDocument>(json);
         }
 
         public FigunityScreen Locate(string keyNameOrSlug)
@@ -76,14 +77,23 @@ namespace Figunity.Editor
         public int siblingIndex;
         public string path;
         public string renderMode;
+        public string controlHint;
         public bool clipsContent;
+        public bool isMask;
+        public string maskType;
         public float opacity = 1f;
         public string blendMode;
         public FigunityBounds bounds;
+        public FigunityConstraints constraints;
+        public FigunityAutoLayout autoLayout;
         public List<FigunityPaint> fills = new List<FigunityPaint>();
         public List<FigunityPaint> strokes = new List<FigunityPaint>();
         public float strokeWeight;
         public float cornerRadius;
+        public bool isInstance;
+        public string componentKey;
+        public string componentName;
+        public string repeatKey;
         public FigunityText text;
         public List<FigunityNode> children = new List<FigunityNode>();
         public string assetPath;
@@ -142,6 +152,34 @@ namespace Figunity.Editor
         public FigunityColor color;
         public bool hasImage;
         public string scaleMode;
+    }
+
+    [Serializable]
+    public sealed class FigunityConstraints
+    {
+        public string horizontal;
+        public string vertical;
+    }
+
+    [Serializable]
+    public sealed class FigunityAutoLayout
+    {
+        public string layoutMode;
+        public string primaryAxisSizingMode;
+        public string counterAxisSizingMode;
+        public string primaryAxisAlignItems;
+        public string counterAxisAlignItems;
+        public string layoutWrap;
+        public float itemSpacing;
+        public float counterAxisSpacing;
+        public float paddingLeft;
+        public float paddingRight;
+        public float paddingTop;
+        public float paddingBottom;
+
+        public bool Enabled =>
+            string.Equals(layoutMode, "HORIZONTAL", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(layoutMode, "VERTICAL", StringComparison.OrdinalIgnoreCase);
     }
 
     [Serializable]

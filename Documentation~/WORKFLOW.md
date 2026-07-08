@@ -13,6 +13,7 @@
    - `Assets/FIGUNITY/Imports/Screenshots/*.png`
    - `Assets/FIGUNITY/Imports/ElementAssets/<frame>/*.png`
 7. Unity refreshes assets and rebuilds preview prefabs into `Assets/FIGUNITY/Prefabs`.
+8. Unity writes diagnostics, repeated-item prefab candidates, and an optional test scene.
 
 ## External MCP Dependency
 
@@ -55,9 +56,16 @@ FIGUNITY converts:
 
 - `renderMode: "text"` to `TextMeshProUGUI`
 - simple solid nodes to `Image`
+- simple rounded solid nodes to `FigunityRoundedRectGraphic`
 - exported visual/background nodes with `assetPath` to `RawImage`
 - nodes whose names contain `button` to `Button`
 - groups with `Track` and `Fill` children to read-only `Slider`
+- active slider names to interactable `Slider`
+- `clipsContent` to `RectMask2D`
+- Figma mask nodes to `Mask`
+- Figma auto-layout metadata to `HorizontalLayoutGroup` or `VerticalLayoutGroup`
+- scroll hints to `ScrollRect`
+- toggle, input, dropdown, and tab hints to their closest UGUI/TMP controls
 
 The generated prefabs are preview/editing artifacts. Production binding should stay in the consuming game project.
 
@@ -81,3 +89,17 @@ Tools/FIGUNITY/Export And Rebuild
 ```
 
 Keep project-specific production prefab replacement and runtime binding code in the consuming Unity project.
+
+## Test Menu Workflow
+
+Run:
+
+```text
+Tools/FIGUNITY/Tests/Create Export Rebuild And Build Test Scene
+```
+
+This creates neutral Figma test menus through `figma-console-mcp`, exports them, rebuilds prefabs, extracts repeated card prefabs, writes diagnostics, and creates:
+
+```text
+Assets/FIGUNITY/TestScene/FigunityTestMenus.unity
+```
